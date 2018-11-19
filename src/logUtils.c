@@ -6,77 +6,97 @@
 ** Hector Sanchez San Blas DNI 70901148Z
 */
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-#define SERVER_HOST_NAME "olivo.fis.usal.es"
-#define SERVER_IP
+#include <time.h>
+#include "logUtils.h"
 
 #define SERVER_LOG "peticiones.log"
+#define SERVER_HOST_NAME "olivo.fis.usal.es"
 
-#define BUFF 1000
-#define DATE_AND_TIME_TAM 20
-#define CLIENT_FILE_PATH_SIZE 100
+#define TIME_STRING_SIZE 100
+#define LOG_MESSAGE_SIZE 1000
+#define CLIENT_FILE_PATH_SIZE 20
 
+FILE * serverLog = NULL, *clientLog = NULL;
 
-FILE * serverLog = openFile(SERVER_LOG);
-
-//NOTA: host es el nombre del cliente
-void logServer(char*ip, char * protocol, char * clientPort){
-	char toLog[BUFF];
-	char dateAndTime[DATE_AND_TIME_TAM];
-	
-	getDateAndTime(dateAndTime);
-	sprintf(toLog,"\n[%s][Connection] Host:%20s IP:%20s Protocol:%20s ClientPort:%20s",dateAndTime,SERVER_HOST_NAME,ip,protocol,clientPort);	
-
-	fprintf(stderr,toLog);
-	fwrite(toLog, sizeof(char), BUFF, serverLog);
+const char * getDateAndTime(){
+	static char timeString[TIME_STRING_SIZE];
+	time_t t = time(NULL);
+	struct tm tm = *localtime(&t);
+	sprintf(timeString,"%d-%d-%d %d:%d:%d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+	return timeString;
 }
 
-void logServerEnded(char * ip, char * protocol, char * clientPort,int error){
-	char toLog[BUFF];
-	char dateAndTime[DATE_AND_TIME_TAM];
-	
-	getDateAndTime(dateAndTime);	
-	if(error){
-		sprintf(toLog,"\n[%s][File][ERROR: %s][Host:%20s IP:%20s Protocol:%20s ClientPort:%20s]",,error,SERVER_HOST_NAME,ip,protocol,clientPort);	
+void openServerLog(){
+	if(NULL != serverLog)
+		fclose(serverLog);
+	serverLog = fopen(SERVER_LOG,"w+");
+}
+
+void openClientLog(char * port){
+	char path[CLIENT_FILE_PATH_SIZE];
+	sprintf(path,"%s.txt",port);
+
+	if(NULL != clientLog)
+		fclose(clientLog);
+	clientLog = fopen(path,"w+");
+}
+
+void closeServerLog(){
+	fclose(serverLog);
+}
+
+void closeClientLog(){
+	fclose(serverLog);
+}
+
+void logServer(char * ip, char * protocol, char * clientPort, bool end, bool error, char * errorMsg){
+	char toLog[LOG_MESSAGE_SIZE];
+
+	if(NULL == serverLog)
+		openServerLog();
+
+	if(end){
+		if(error)
+			sprintf(toLog,"\n[%s][Connection][ERROR: %s][Host:%20s IP:%15s Protocol:%5s ClientPort:%5s]",getDateAndTime(),errorMsg,SERVER_HOST_NAME,ip,protocol,clientPort);	
+		else
+			sprintf(toLog,"\n[%s][Connection][SUCCED][Host:%20s IP:%15s Protocol:%5s ClientPort:%5s]",getDateAndTime(),SERVER_HOST_NAME,ip,protocol,clientPort);
 	}else{
-		sprintf(toLog,"\n[%s][File][SUCCED][Host:%20s IP:%20s Protocol:%20s ClientPort:%20s]",,SERVER_HOST_NAME,ip,protocol,clientPort);	
+		sprintf(toLog,"\n[%s][Connection] Host:%20s IP:%15s Protocol:%5s ClientPort:%5s",getDateAndTime(),SERVER_HOST_NAME,ip,protocol,clientPort);	
+	}
+	
+	fprintf(stderr,"%s",toLog);
+	fprintf(serverLog, "%s",toLog);
+
+	if(end){
+		fclose(serverLog);
+		serverLog = NULL;
+	}
+}
+
+void logClient(char * port, char * fileName, int block, bool end, bool error, char * errorMsg){
+	char toLog[LOG_MESSAGE_SIZE];
+
+	if(NULL == clientLog)
+		openClientLog(port);
+
+	if(end){
+		if(error)
+			sprintf(toLog,"\n[%s][File %10s][ERROR: %s]",getDateAndTime(),fileName,errorMsg);	
+		else
+			sprintf(toLog,"\n[%s][File %10s][SUCCED]",getDateAndTime(),fileName);	
+	}else{
+		sprintf(toLog,"\n[%s][File %10s] Send block:%d",getDateAndTime(),fileName,block);	
 	}
 
-	fprintf(stderr,toLog);
-	fwrite(toLog, sizeof(char), BUFF, serverLog);
-}
+	fprintf(stderr,"%s",toLog);
+	fprintf(clientLog, "%s",toLog);
 
-
-void logClient(char * fileName,int block){
-	char toLog[BUFF];
-	char dateAndTime[DATE_AND_TIME_TAM];
-	char filePath[CLIENT_FILE_PATH_SIZE];
-
-	sprintf(filePath,"[]");
-
-	getDateAndTime(dateAndTime);
-	sprintf(toLog,"\n[%s][File %15s] Block:%d",dateAndTime,fileName,block);	
-
-	fprintf(stderr,toLog);
-	fwrite(toLog, sizeof(char), BUFF, serverLog);
-
-Enviando el fichero nombre-fichero, enviando bloque 1, enviando bloque 2, enviando bloque 3 y último,
-finalizado correctamente
-
-Escribirá
-los mensajes de progreso y los mensajes de
-error y/o depuración en un fichero con nombre el
-número de puerto efímero del cliente y extensión .txt
-}
-
-void openFile(){
-
-}
-
-void getDateAndTime(char * toPrint){
-	struct tm * tm;
-	tm = (&time(NULL));
-	sprintf(toPrint,"%s%d"...);
+	if(end){
+		fclose(clientLog);
+		clientLog = NULL;
+	}
 }
