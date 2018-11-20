@@ -48,11 +48,6 @@ typedef struct{
 }errMsg;
 
 
-rwMsg getReadMsg(opMode mode, char * fileName);
-dataMsg getDataMsg(int blockNumber, char * data);
-errMsg getErrMsg(errorMsgCodes errorCode, char * errorMsg);
-
-
 void openTcpSocket();
 void openUdpSocket();
 

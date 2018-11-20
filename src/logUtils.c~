@@ -38,7 +38,7 @@ void openServerLog(){
 
 void openClientLog(char * port){
 	char path[CLIENT_FILE_PATH_SIZE];
-	sprintf(path,"log\\%s.txt",port);
+	sprintf(path,"%s.txt",port);
 
 	if(NULL != clientLog)
 		fclose(clientLog);

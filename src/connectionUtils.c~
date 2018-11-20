@@ -39,6 +39,8 @@ errMsg getErrMsg(errorMsgCodes errorCode, char * errorMsg){
 	return msg;
 }
 
+
+
 void openTcpSocket(){
 
 }
