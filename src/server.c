@@ -9,7 +9,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <unistd.h>
 #include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/errno.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include "utils.h"
 #include "logUtils.h"
 #include "msgUtils.h"
@@ -22,7 +27,7 @@
 #define MAXHOST 128
 
 //socket descriptors and bool to check which one should be close in SIGTERMHandler
-int udpDescriptor, tcpDescriptor, listenDescriptor;
+int udpDescriptor, tcpDescriptor, listenTcpDescriptor;
 
 //signal handlers
 void SIGTERMHandler(int);
@@ -58,8 +63,8 @@ int main(int argc, char * argv[]){
 
 void initializeServers(){
 
-      int s_TCP, s_UDP;		/* connected socket descriptor */
-      int ls_TCP;				/* listen socket descriptor */
+      int tcpDescriptor, udpDescriptor;		/* connected socket descriptor */
+      int listenTcpDescriptor;				/* listen socket descriptor */
 
       int cc;				    /* contains the number of bytes read */
 
@@ -75,7 +80,7 @@ void initializeServers(){
       struct sigaction vec;
 
   	/* Create the listen socket. */
-  	EXIT_ON_FAILURE(ls_TCP = socket (AF_INET, SOCK_STREAM, 0));
+  	EXIT_ON_FAILURE(listenTcpDescriptor = socket (AF_INET, SOCK_STREAM, 0));
   	/* clear out address structures */
   	memset (&myaddr_in, 0, sizeof(struct sockaddr_in));
     memset (&clientaddr_in, 0, sizeof(struct sockaddr_in));
@@ -97,18 +102,18 @@ void initializeServers(){
   	myaddr_in.sin_port = htons(PORT);
 
   	/* Bind the listen address to the socket. */
-  	EXIT_ON_FAILURE( bind(ls_TCP, (const struct sockaddr *) &myaddr_in, sizeof(struct sockaddr_in)) );
+  	EXIT_ON_FAILURE( bind(listenTcpDescriptor, (const struct sockaddr *) &myaddr_in, sizeof(struct sockaddr_in)) );
   		/* Initiate the listen on the socket so remote users
   		 * can connect.  The listen backlog is set to 5, which
   		 * is the largest currently supported.
   		 */
-  	EXIT_ON_FAILURE(listen(ls_TCP, 5));
+  	EXIT_ON_FAILURE(listen(listenTcpDescriptor, 5));
 
   	/* Create the socket UDP. */
-  	EXIT_ON_FAILURE(s_UDP = socket (AF_INET, SOCK_DGRAM, 0));
+  	EXIT_ON_FAILURE(udpDescriptor = socket (AF_INET, SOCK_DGRAM, 0));
 
   	/* Bind the server's address to the socket. */
-  	EXIT_ON_FAILURE(bind(s_UDP, (struct sockaddr *) &myaddr_in, sizeof(struct sockaddr_in)));
+  	EXIT_ON_FAILURE(bind(udpDescriptor, (struct sockaddr *) &myaddr_in, sizeof(struct sockaddr_in)));
 
   		/* Now, all the initialization of the server is
   		 * complete, and any user errors will have already
@@ -124,7 +129,7 @@ void initializeServers(){
   		 */
   	setpgrp();
 
-    pid_t daemodPid = createProcess();
+    pid_t daemonPid = createProcess();
     if(!isChild(daemonPid)){
       /*If is father it exits*/
       exit(EXIT_SUCCESS);
@@ -147,18 +152,18 @@ void initializeServers(){
     while (TRUE) {
       /* Meter en el conjunto de sockets los sockets UDP y TCP */
       FD_ZERO(&readmask);
-      FD_SET(ls_TCP, &readmask);
-      FD_SET(s_UDP, &readmask);
+      FD_SET(listenTcpDescriptor, &readmask);
+      FD_SET(udpDescriptor, &readmask);
       /*Seleccionar el descriptor del socket que ha cambiado. Deja una marca en
       el conjunto de sockets (readmask)
       */
 
-      s_mayor = (ls_TCP > s_UDP) ? ls_TCP : s_UDP;
+      s_mayor = (listenTcpDescriptor > udpDescriptor) ? listenTcpDescriptor : udpDescriptor;
 
       EXIT_ON_FAILURE(numfds = select(s_mayor+1, &readmask, (fd_set *)0, (fd_set *)0, NULL));
 
       /* Comprobamos si el socket seleccionado es el socket TCP */
-      if (FD_ISSET(ls_TCP, &readmask)) {
+      if (FD_ISSET(listenTcpDescriptor, &readmask)) {
                     /* Note that addrlen is passed as a pointer
                      * so that the accept call can return the
                      * size of the returned address.
@@ -169,21 +174,21 @@ void initializeServers(){
              * peer, and a new socket descriptor, s,
              * for that connection.
              */
-          EXIT_ON_FAILURE(s_TCP = accept(ls_TCP, (struct sockaddr *) &clientaddr_in, &addrlen));
+          EXIT_ON_FAILURE(tcpDescriptor = accept(listenTcpDescriptor, (struct sockaddr *) &clientaddr_in, &addrlen));
 
           pid_t serverInstancePid = createProcess();
 
           if(isChild(serverInstancePid)){
-            close(ls_TCP); /* Close the listen socket inherited from the daemon. */
-            tcpServer(s_TCP, clientaddr_in);
+            close(listenTcpDescriptor); /* Close the listen socket inherited from the daemon. */
+            tcpServer(tcpDescriptor, clientaddr_in);
             exit(EXIT_SUCCESS);
           }else{
-            close(s_TCP);
+            close(tcpDescriptor);
           }
 
           /* De TCP*/
           /* Comprobamos si el socket seleccionado es el socket UDP */
-          if (FD_ISSET(s_UDP, &readmask)) {
+          if (FD_ISSET(udpDescriptor, &readmask)) {
                 /* This call will block until a new
                 * request arrives.  Then, it will
                 * return the address of the client,
@@ -192,22 +197,23 @@ void initializeServers(){
                 * room is left at the end of the buffer
                 * for a null character.
                 */
-                EXIT_ON_FAILURE(cc = recvfrom(s_UDP, buffer, BUFFERSIZE - 1, 0, (struct sockaddr *)&clientaddr_in, &addrlen));
+                EXIT_ON_FAILURE(cc = recvfrom(udpDescriptor, buffer, BUFFERSIZE - 1, 0, (struct sockaddr *)&clientaddr_in, &addrlen));
                 /* Make sure the message received is
                 * null terminated.
                 */
                 buffer[cc]='\0';
-                udpServer (s_UDP, buffer, clientaddr_in);
+                udpServer (udpDescriptor, buffer, clientaddr_in);
            }
       }   /* Fin del bucle infinito de atenci�n a clientes */
     }
+}
 }
 
 void SIGTERMHandler(int ss){
   //close handlers
   close(tcpDescriptor);
   close(udpDescriptor);
-  close(listenDescriptor);
+  close(listenTcpDescriptor);
   //close log
   closeServerLog();
   //exit
