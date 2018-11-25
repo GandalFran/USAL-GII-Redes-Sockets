@@ -8,10 +8,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "utils.h"
-#include "logUtils.h"
-#include "msgUtils.h"
-#include "concurrencyUtils.h"
+#include "tcpClient.h"
+#include "udpClient.h"
+#include "../utils/utils.h"
+#include "../utils/logUtils.h"
+#include "../utils/msgUtils.h"
+#include "../utils/concurrencyUtils.h"
 
 #define USAGE_ERROR_MSG "Error: usage ./client <server name or ip> <TCP or UDP> <r or w> <file>"
 
@@ -49,20 +51,4 @@ int main(int argc, char * argv[]){
 	}
 
 	return 0;
-}
-
-void tcpReadMode(){
-
-}
-
-void tcpWriteMode(){
-
-}
-
-void udpReadMode(){
-
-}
-
-void udpWriteMode(){
-
 }

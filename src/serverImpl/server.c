@@ -10,15 +10,17 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <unistd.h>
+#include <netdb.h>
+#include <time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/errno.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include "utils.h"
-#include "logUtils.h"
-#include "msgUtils.h"
-#include "concurrencyUtils.h"
+#include "../utils/utils.h"
+#include "../utils/logUtils.h"
+#include "../utils/msgUtils.h"
+#include "../utils/concurrencyUtils.h"
 
 #define PORT 8455
 #define ADDRNOTFOUND	0xffffffff	/* return address for unfound host */
@@ -224,8 +226,8 @@ void SIGALRMHandler(int ss){
 
 }
 
-void tcpServer(){
-  fprintf(stderr, "%s\n","TCP SERVER");
+void tcpServer(int s, struct sockaddr_in clientaddr_in){
+
 }
 
 void udpServer(){
