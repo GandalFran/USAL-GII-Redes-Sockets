@@ -1,13 +1,13 @@
 /*
 
-** Fichero: connectionUtils.h
+** Fichero: msgUtils.h
 ** Autores:
 ** Francisco Pinto Santos  DNI 70918455W
 ** Hector Sanchez San Blas DNI 70901148Z
 */
 
-#ifndef __CONNECTIONUTILS_H
-#define __CONNECTIONUTILS_H
+#ifndef __MSGUTILS_H
+#define __MSGUTILS_H
 
 #include<stdio.h>
 #include<stdlib.h>
@@ -53,15 +53,9 @@ typedef struct{
 	byte tail;
 }errMsg;
 
-rwMsg getReadMsg(opMode mode, char * fileName);
-dataMsg getDataMsg(short blockNumber, char * data);
-ackMsg getAckMsg(short blockNumber);
-errMsg getErrMsg(errorMsgCodes errorCode, char * errorMsg);
-
-void openTcpSocket();
-void openUdpSocket();
-
-void closeTcpSocket();
-void closeUdpSocket();
+void fillReadMsg(rwMsg*msg, opMode mode, char * fileName);
+void fillDataMsg(dataMsg*msg, short blockNumber, char * data);
+void fillAckMsg(ackMsg*msg, short blockNumber);
+void fillErrMsg(errMsg*msg, errorMsgCodes errorCode, char * errorMsg);
 
 #endif

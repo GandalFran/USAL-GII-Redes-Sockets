@@ -1,0 +1,7 @@
+DAME /index.html k
+GET /index.html k
+GET /docencia.html k
+GET /ejemplo1.html k
+GET /ejemplo2.html k
+GET /ejemplo3.html k
+GET /ejemplo4.html c

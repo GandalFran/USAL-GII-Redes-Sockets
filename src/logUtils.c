@@ -47,10 +47,12 @@ void openClientLog(char * port){
 
 void closeServerLog(){
 	fclose(serverLog);
+	serverLog = NULL;
 }
 
 void closeClientLog(){
-	fclose(serverLog);
+	fclose(clientLog);
+	clientLog = NULL;
 }
 
 void logServer(char * ip, char * protocol, char * clientPort, bool end, bool error, char * errorMsg){
@@ -61,20 +63,18 @@ void logServer(char * ip, char * protocol, char * clientPort, bool end, bool err
 
 	if(end){
 		if(error)
-			sprintf(toLog,"\n[%s][Connection][ERROR: %s][Host:%20s IP:%15s Protocol:%5s ClientPort:%5s]",getDateAndTime(),errorMsg,SERVER_HOST_NAME,ip,protocol,clientPort);	
+			sprintf(toLog,"\n[%s][Connection][ERROR: %s][Host:%20s] [IP:%15s] [Protocol:%5s] [ClientPort:%5s]",getDateAndTime(),errorMsg,SERVER_HOST_NAME,ip,protocol,clientPort);
 		else
-			sprintf(toLog,"\n[%s][Connection][SUCCED][Host:%20s IP:%15s Protocol:%5s ClientPort:%5s]",getDateAndTime(),SERVER_HOST_NAME,ip,protocol,clientPort);
+			sprintf(toLog,"\n[%s][Connection][SUCCED][Host:%20s] [IP:%15s] [Protocol:%5s] [ClientPort:%5s]",getDateAndTime(),SERVER_HOST_NAME,ip,protocol,clientPort);
 	}else{
-		sprintf(toLog,"\n[%s][Connection] Host:%20s IP:%15s Protocol:%5s ClientPort:%5s",getDateAndTime(),SERVER_HOST_NAME,ip,protocol,clientPort);	
+		sprintf(toLog,"\n[%s][Connection] [Host:%20s] [IP:%15s] [Protocol:%5s] [ClientPort:%5s]",getDateAndTime(),SERVER_HOST_NAME,ip,protocol,clientPort);
 	}
-	
+
 	fprintf(stderr,"%s",toLog);
 	fprintf(serverLog, "%s",toLog);
 
-	if(end){
-		fclose(serverLog);
-		serverLog = NULL;
-	}
+	if(end)
+		closeServerLog();
 }
 
 void logClient(char * port, char * fileName, int block, bool end, bool error, char * errorMsg){
@@ -85,18 +85,16 @@ void logClient(char * port, char * fileName, int block, bool end, bool error, ch
 
 	if(end){
 		if(error)
-			sprintf(toLog,"\n[%s][File %10s][ERROR: %s]",getDateAndTime(),fileName,errorMsg);	
+			sprintf(toLog,"\n[%s][File %10s][ERROR: %s]",getDateAndTime(),fileName,errorMsg);
 		else
-			sprintf(toLog,"\n[%s][File %10s][SUCCED]",getDateAndTime(),fileName);	
+			sprintf(toLog,"\n[%s][File %10s][SUCCED]",getDateAndTime(),fileName);
 	}else{
-		sprintf(toLog,"\n[%s][File %10s] Send block:%d",getDateAndTime(),fileName,block);	
+		sprintf(toLog,"\n[%s][File %10s][Send block:%d]",getDateAndTime(),fileName,block);
 	}
 
 	fprintf(stderr,"%s",toLog);
 	fprintf(clientLog, "%s",toLog);
 
-	if(end){
-		fclose(clientLog);
-		clientLog = NULL;
-	}
+	if(end)
+		closeClientLog();
 }

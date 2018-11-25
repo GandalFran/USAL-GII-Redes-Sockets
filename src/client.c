@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include "utils.h"
 #include "logUtils.h"
-#include "connectionUtils.h"
+#include "msgUtils.h"
 #include "concurrencyUtils.h"
 
 #define USAGE_ERROR_MSG "Error: usage ./client <server name or ip> <TCP or UDP> <r or w> <file>"
@@ -20,13 +20,18 @@
 #define READ_ARG "r"
 #define WRITE_ARG "w"
 
+void tcpReadMode(void);
+void tcpWriteMode(void);
+void udpReadMode(void);
+void udpWriteMode(void);
+
 int main(int argc, char * argv[]){
 	//Register handlers for signals
 
 	//Check the args are correct
-	if( argc != 5 
-		|| (!strcmp(argv[2],TCP_ARG)) && !strcmp(argv[2],UDP_ARG))
-		|| (!strcmp(argv[3],READ_ARG)) && !strcmp(argv[3],WRITE_ARG))
+	if( argc != 5
+		|| (!strcmp(argv[2],TCP_ARG) && !strcmp(argv[2],UDP_ARG))
+		|| (!strcmp(argv[3],READ_ARG) && !strcmp(argv[3],WRITE_ARG))
 	){
 		fprintf(stderr,"%s",USAGE_ERROR_MSG);
 	}
