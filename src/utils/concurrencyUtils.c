@@ -17,7 +17,7 @@
 
 pid_t createProcess(){
   pid_t pid;
-  EXIT_ON_FAILURE(pid = fork());
+  EXIT_ON_FAILURE(-1,pid = fork());
   return pid;
 }
 
@@ -31,7 +31,7 @@ void redefineSignal(int signal, void(*function)(int)){
 
   ss.sa_handler=function;
   ss.sa_flags=0;
-  EXIT_ON_FAILURE(sigfillset(&ss.sa_mask));
+  EXIT_ON_FAILURE(-1,sigfillset(&ss.sa_mask));
 
-  EXIT_ON_FAILURE(sigaction(signal,&ss,NULL));
+  EXIT_ON_FAILURE(-1,sigaction(signal,&ss,NULL));
 }

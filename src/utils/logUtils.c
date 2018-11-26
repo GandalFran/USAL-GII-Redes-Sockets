@@ -13,8 +13,7 @@
 #include <time.h>
 #include "logUtils.h"
 
-#define SERVER_LOG "log\\peticiones.log"
-#define SERVER_HOST_NAME "olivo.fis.usal.es"
+#define SERVER_LOG "peticiones.log"
 
 #define TIME_STRING_SIZE 100
 #define LOG_MESSAGE_SIZE 1000
@@ -33,12 +32,12 @@ const char * getDateAndTime(){
 void openServerLog(){
 	if(NULL != serverLog)
 		fclose(serverLog);
-	serverLog = fopen(SERVER_LOG,"a+");
+	serverLog = fopen(SERVER_LOG,"w+");
 }
 
-void openClientLog(char * port){
+void openClientLog(int port){
 	char path[CLIENT_FILE_PATH_SIZE];
-	sprintf(path,"log\\%s.txt",port);
+	sprintf(path,"%d.txt",port);
 
 	if(NULL != clientLog)
 		fclose(clientLog);
@@ -46,16 +45,18 @@ void openClientLog(char * port){
 }
 
 void closeServerLog(){
-	fclose(serverLog);
+	if(NULL != serverLog)
+		fclose(serverLog);
 	serverLog = NULL;
 }
 
 void closeClientLog(){
-	fclose(clientLog);
+	if(NULL != clientLog)
+		fclose(clientLog);
 	clientLog = NULL;
 }
 
-void logServer(char * ip, char * protocol, char * clientPort, bool end, bool error, char * errorMsg){
+void logServer(char * ip, char * protocol, int clientPort, bool end, bool error, char * errorMsg){
 	char toLog[LOG_MESSAGE_SIZE];
 
 	if(NULL == serverLog)
@@ -63,11 +64,11 @@ void logServer(char * ip, char * protocol, char * clientPort, bool end, bool err
 
 	if(end){
 		if(error)
-			sprintf(toLog,"\n[%s][Connection][ERROR: %s][Host:%20s] [IP:%15s] [Protocol:%5s] [ClientPort:%5s]",getDateAndTime(),errorMsg,SERVER_HOST_NAME,ip,protocol,clientPort);
+			sprintf(toLog,"\n[%s][Connection][ERROR: %s][IP:%15s] [Protocol:%5s][ClientPort:%5d]",getDateAndTime(),errorMsg,ip,protocol,clientPort);
 		else
-			sprintf(toLog,"\n[%s][Connection][SUCCED][Host:%20s] [IP:%15s] [Protocol:%5s] [ClientPort:%5s]",getDateAndTime(),SERVER_HOST_NAME,ip,protocol,clientPort);
+			sprintf(toLog,"\n[%s][Connection][SUCCED][IP:%15s][Protocol:%5s][ClientPort:%5d]",getDateAndTime(),ip,protocol,clientPort);
 	}else{
-		sprintf(toLog,"\n[%s][Connection] [Host:%20s] [IP:%15s] [Protocol:%5s] [ClientPort:%5s]",getDateAndTime(),SERVER_HOST_NAME,ip,protocol,clientPort);
+		sprintf(toLog,"\n[%s][Connection][Protocol:%5s][ClientPort:%5s]",getDateAndTime(),ip,protocol,clientPort);
 	}
 
 	fprintf(stderr,"%s",toLog);
@@ -77,7 +78,7 @@ void logServer(char * ip, char * protocol, char * clientPort, bool end, bool err
 		closeServerLog();
 }
 
-void logClient(char * port, char * fileName, int block, bool end, bool error, char * errorMsg){
+void logClient(int port, char * fileName, int block, bool end, bool error, char * errorMsg){
 	char toLog[LOG_MESSAGE_SIZE];
 
 	if(NULL == clientLog)

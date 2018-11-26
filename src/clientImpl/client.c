@@ -22,11 +22,6 @@
 #define READ_ARG "r"
 #define WRITE_ARG "w"
 
-void tcpReadMode(void);
-void tcpWriteMode(void);
-void udpReadMode(void);
-void udpWriteMode(void);
-
 int main(int argc, char * argv[]){
 	//Register handlers for signals
 
@@ -40,7 +35,7 @@ int main(int argc, char * argv[]){
 
 	if(!strcmp(argv[2],TCP_ARG)){
 		if(!strcmp(argv[3],READ_ARG))
-			tcpReadMode();
+			tcpReadMode(argv[1],argv[4]);
 		else
 			tcpWriteMode();
 	}else{

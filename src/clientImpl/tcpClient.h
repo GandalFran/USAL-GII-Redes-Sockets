@@ -9,7 +9,7 @@
 #ifndef __TCPCLIENT_H_
 #define __TCPCLIENT_H_
 
-void tcpReadMode(void);
+void tcpReadMode(char * hostName, char * file);
 void tcpWriteMode(void);
 
 #endif

@@ -4,18 +4,27 @@ COFLAGS=-g -c
 OBJ= utils/concurrencyUtils.o utils/msgUtils.o utils/logUtils.o
 CLIENTS = clientImpl/udpClient.o clientImpl/tcpClient.o
 
+#only for olivo
+LIBS= -lsocket -lnsl
+
 all: server client removeCompilationWaste
+
+runAll: server client removeCompilationWaste
+		./server &
+		./client 127.20.2.164 TCP r f1.txt &
 
 runServer: server
 		rm utils/*.o
 		clear
 		echo "aqui va el comando para ejecutar"
+		./server
+		
 runClient: client
 		rm utils/*.o
 		rm clientImpl/*.o
 		clear
 		echo "aqui va el comando para ejecutar"
-
+		./client 127.20.2.164 TCP r f1
 clean:
 	rm client
 	rm server
@@ -26,9 +35,9 @@ removeCompilationWaste:
 		rm clientImpl/*.o
 
 server: serverImpl/server.c utils/utils.h $(OBJ)
-	$(CC) $(CFLAGS) serverImpl/server.c $(OBJ) -o server
+	$(CC) $(CFLAGS) serverImpl/server.c $(OBJ) -o server #$(LIBS)
 client: clientImpl/client.c utils/utils.h $(OBJ) $(CLIENTS)
-	$(CC) $(CFLAGS) clientImpl/client.c $(OBJ) $(CLIENTS) -o client
+	$(CC) $(CFLAGS) clientImpl/client.c $(OBJ) $(CLIENTS) -o client #$(LIBS) 
 
 tcpClient.o: clientImpl/tcpClient.h clientImpl/tcpClient.c utils/utils.h
 	$(CC) $(COFLAGS) clientImpl/tcpClient.c

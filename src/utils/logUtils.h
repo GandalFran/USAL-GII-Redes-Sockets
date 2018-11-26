@@ -11,13 +11,15 @@
 
 #include "utils.h"
 
+typedef unsigned short bool;
+
 void openServerLog(void);
-void openClientLog(char * port);
+void openClientLog(int port);
 
 void closeServerLog(void);
 void closeClientLog(void);
 
-void logServer(char * ip, char * protocol, char * clientPort, bool end, bool error, char * errorMsg);
-void logClient(char * port, char * fileName, int block, bool end, bool error, char * errorMsg);
+void logServer(char * ip, char * protocol, int clientPort, bool end, bool error, char * errorMsg);
+void logClient(int port, char * fileName, int block, bool end, bool error, char * errorMsg);
 
 #endif
