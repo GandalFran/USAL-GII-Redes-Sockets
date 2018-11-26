@@ -2,7 +2,7 @@
  *          		S E R V I D O R
  *
  *	This is an example program that demonstrates the use of
- *	sockets TCP and UDP as an IPC mechanism.  
+ *	sockets TCP and UDP as an IPC mechanism.
  *
  */
 #include <sys/types.h>
@@ -37,7 +37,7 @@ extern int errno;
  *	will loop forever, until killed by a signal.
  *
  */
- 
+
 void serverTCP(int s, struct sockaddr_in peeraddr_in);
 void serverUDP(int s, char * buffer, struct sockaddr_in clientaddr_in);
 void errout(char *);		/* declare error out routine */
@@ -52,20 +52,20 @@ char *argv[];
 
     int s_TCP, s_UDP;		/* connected socket descriptor */
     int ls_TCP;				/* listen socket descriptor */
-    
+
     int cc;				    /* contains the number of bytes read */
-     
+
     struct sigaction sa = {.sa_handler = SIG_IGN}; /* used to ignore SIGCHLD */
-    
+
     struct sockaddr_in myaddr_in;	/* for local socket address */
     struct sockaddr_in clientaddr_in;	/* for peer socket address */
 	int addrlen;
-	
+
     fd_set readmask;
     int numfds,s_mayor;
-    
+
     char buffer[BUFFERSIZE];	/* buffer for packets to be read into */
-    
+
     struct sigaction vec;
 
 		/* Create the listen socket. */
@@ -111,8 +111,8 @@ char *argv[];
 		fprintf(stderr, "%s: unable to listen on socket\n", argv[0]);
 		exit(1);
 	}
-	
-	
+
+
 	/* Create the socket UDP. */
 	s_UDP = socket (AF_INET, SOCK_DGRAM, 0);
 	if (s_UDP == -1) {
@@ -170,7 +170,7 @@ char *argv[];
             fprintf(stderr,"%s: unable to register the SIGCHLD signal\n", argv[0]);
             exit(1);
             }
-            
+
 		    /* Registrar SIGTERM para la finalizacion ordenada del programa servidor */
         vec.sa_handler = (void *) finalizar;
         vec.sa_flags = 0;
@@ -179,16 +179,16 @@ char *argv[];
             fprintf(stderr,"%s: unable to register the SIGTERM signal\n", argv[0]);
             exit(1);
             }
-        
+
 		while (!FIN) {
             /* Meter en el conjunto de sockets los sockets UDP y TCP */
             FD_ZERO(&readmask);
             FD_SET(ls_TCP, &readmask);
             FD_SET(s_UDP, &readmask);
-            /* 
-            Seleccionar el descriptor del socket que ha cambiado. Deja una marca en 
+            /*
+            Seleccionar el descriptor del socket que ha cambiado. Deja una marca en
             el conjunto de sockets (readmask)
-            */ 
+            */
     	    if (ls_TCP > s_UDP) s_mayor=ls_TCP;
     		else s_mayor=s_UDP;
 
@@ -197,10 +197,10 @@ char *argv[];
                     FIN=1;
 		            close (ls_TCP);
 		            close (s_UDP);
-                    perror("\nFinalizando el servidor. SeÃal recibida en elect\n "); 
+                    perror("\nFinalizando el servidor. Seï¿½al recibida en elect\n ");
                 }
             }
-           else { 
+           else {
 
                 /* Comprobamos si el socket seleccionado es el socket TCP */
                 if (FD_ISSET(ls_TCP, &readmask)) {
@@ -261,13 +261,13 @@ char *argv[];
                 serverUDP (s_UDP, buffer, clientaddr_in);
                 }
           }
-		}   /* Fin del bucle infinito de atención a clientes */
+		}   /* Fin del bucle infinito de atenciï¿½n a clientes */
         /* Cerramos los sockets UDP y TCP */
         close(ls_TCP);
         close(s_UDP);
-    
+
         printf("\nFin de programa servidor!\n");
-        
+
 	default:		/* Parent process comes here. */
 		exit(0);
 	}
@@ -293,16 +293,16 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 	int len, len1, status;
     struct hostent *hp;		/* pointer to host info for remote host */
     long timevar;			/* contains time returned by time() */
-    
+
     struct linger linger;		/* allow a lingering, graceful close; */
     				            /* used when setting SO_LINGER */
-    				
+
 	/* Look up the host information for the remote host
 	 * that we have connected with.  Its internet address
 	 * was returned by the accept call, in the main
 	 * daemon loop above.
 	 */
-	 
+
      status = getnameinfo((struct sockaddr *)&clientaddr_in,sizeof(clientaddr_in),
                            hostname,MAXHOST,NULL,0,0);
      if(status){
@@ -408,7 +408,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 void errout(char *hostname)
 {
 	printf("Connection with %s aborted on error\n", hostname);
-	exit(1);     
+	exit(1);
 }
 
 
@@ -431,14 +431,14 @@ void serverUDP(int s, char * buffer, struct sockaddr_in clientaddr_in)
     struct addrinfo hints, *res;
 
 	int addrlen;
-    
+
    	addrlen = sizeof(struct sockaddr_in);
 
       memset (&hints, 0, sizeof (hints));
       hints.ai_family = AF_INET;
 		/* Treat the message as a string containing a hostname. */
-	    /* Esta función es la recomendada para la compatibilidad con IPv6 gethostbyname queda obsoleta. */
-    errcode = getaddrinfo (buffer, NULL, &hints, &res); 
+	    /* Esta funciï¿½n es la recomendada para la compatibilidad con IPv6 gethostbyname queda obsoleta. */
+    errcode = getaddrinfo (buffer, NULL, &hints, &res);
     if (errcode != 0){
 		/* Name was not found.  Return a
 		 * special value signifying the error. */
@@ -456,5 +456,5 @@ void serverUDP(int s, char * buffer, struct sockaddr_in clientaddr_in)
          perror("serverUDP");
          printf("%s: sendto error\n", "serverUDP");
          return;
-         }   
+         }
  }

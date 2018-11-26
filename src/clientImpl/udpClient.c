@@ -7,6 +7,7 @@
 */
 
 #include "udpClient.h"
+#include "clientLog.h"
 
 void udpReadMode(){
 

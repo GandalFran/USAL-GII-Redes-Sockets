@@ -8,12 +8,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "tcpClient.h"
 #include "udpClient.h"
-#include "../utils/utils.h"
-#include "../utils/logUtils.h"
-#include "../utils/msgUtils.h"
-#include "../utils/concurrencyUtils.h"
 
 #define USAGE_ERROR_MSG "Error: usage ./client <server name or ip> <TCP or UDP> <r or w> <file>"
 
