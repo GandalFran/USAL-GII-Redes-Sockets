@@ -21,7 +21,6 @@
 #include "utils/msgUtils.h"
 
 #define ADDRNOTFOUND	0xffffffff	/* return address for unfound host */
-#define BUFFERSIZE	1024	/* maximum size of packets to be received */
 #define MAXHOST 128
 
 
@@ -36,15 +35,19 @@ void tcpServer(int s, struct sockaddr_in clientaddr_in);
 void udpServer(int s, char * buffer, struct sockaddr_in clientaddr_in);
 //others
 void redefineSignal(int signal, void(*function)(int));
-void logError(char * errorMsg);
-void logs(char*host, char * ip, char * protocol, int clientPort, bool end);
+
+#define LOG_START 0 
+#define LOG_NORMAL 1 
+#define LOG_END 2
+void logError(int errorcode, char * errorMsg);
+void logs(char * file, char * host, char * ip, char * protocol, int clientPort, int blockNumber, int mode);
 
 #define EXIT_ON_WRONG_VALUE(wrongValue, errorMsg, returnValue)                          \
 do{                                              		    	                              \
     if((returnValue) == (wrongValue)){		    	                                        \
         char errorTag[200];                                                             \
         sprintf(errorTag, "\n[%s:%d:%s]%s", __FILE__, __LINE__, __FUNCTION__,errorMsg); \
-        logError(errorTag);		    	                                                    \
+        logError(UNKNOWN,errorTag);		    	                                            \
         raise(SIGTERM);		    	                                                        \
         exit(0);                                                                        \
     }		    	                                                                          \
@@ -75,7 +78,7 @@ int main(int argc, char * argv[]){
       fd_set readmask;
       int numfds,s_mayor;
 
-      char buffer[BUFFERSIZE];	/* buffer for packets to be read into */
+      char buffer[TAM_BUFFER];	/* buffer for packets to be read into */
 
       struct sigaction vec;
 
@@ -204,11 +207,11 @@ int main(int argc, char * argv[]){
                * request arrives.  Then, it will
                * return the address of the client,
                * and a buffer containing its request.
-               * BUFFERSIZE - 1 bytes are read so that
+               * TAM_BUFFER - 1 bytes are read so that
                * room is left at the end of the buffer
                * for a null character.
                */
-              EXIT_ON_WRONG_VALUE(-1,"recvfrom error",cc = recvfrom(s_UDP, buffer, BUFFERSIZE - 1, 0, (struct sockaddr *)&clientaddr_in, &addrlen));
+              EXIT_ON_WRONG_VALUE(-1,"recvfrom error",cc = recvfrom(s_UDP, buffer, TAM_BUFFER - 1, 0, (struct sockaddr *)&clientaddr_in, &addrlen));
               /* Make sure the message received is
                * null terminated.
                */
@@ -225,17 +228,40 @@ int main(int argc, char * argv[]){
 
 #define HOSTNAME_SIZE 100
 #define HOSTIP_SIZE 100
-#define BUFFER_SIZE 1024
+
+void logIssue(char * asdf);
+
+
+int reciveMsg(int s, char * buffer){
+  int i=0,j;
+  memset(buffer,0,sizeof(buffer));
+/*
+    while (i = recv(s, buffer, TAM_BUFFER, 0) && i<sizeof(rwMsg)) {
+      EXIT_ON_WRONG_VALUE(-1,"error reading msg", i);
+      logIssue("enteringLoop2");
+      while (i < TAM_BUFFER ) {
+      logIssue("into loop 2");
+        j = recv(s, &buffer[i], TAM_BUFFER-i, 0);
+        logIssue("loop2.2");
+        EXIT_ON_WRONG_VALUE(-1,"error reading msg", j);
+        i += j;
+      }
+      logIssue("loop2ended");
+    }
+    logIssue("loop3");
+*/
+
+  recv(s, buffer, TAM_BUFFER, 0);
+}
+
+
+
 
 void tcpServer(int s, struct sockaddr_in clientaddr_in){
 
-  rwMsg rwmsg;
-  dataMsg dataMsg;
-  errMsg errorMsg;
-
-  int numRequests = 0;
   char hostName[HOSTNAME_SIZE];
   char hostIp[HOSTIP_SIZE];
+  char buffer[TAM_BUFFER];
   struct linger lngr;
 
   //obtain the host information to start communicacion with remote host
@@ -243,18 +269,103 @@ void tcpServer(int s, struct sockaddr_in clientaddr_in){
   	EXIT_ON_WRONG_VALUE(NULL,"error inet_ntop",inet_ntop(AF_INET,&clientaddr_in.sin_addr,hostName,sizeof(hostName)));
 
   strcpy(hostIp, inet_ntoa(clientaddr_in.sin_addr));
-  logs(hostName, hostIp, "TCP", clientaddr_in.sin_port, FALSE);
+  logs(NULL, hostName, hostIp, "TCP", ntohs(clientaddr_in.sin_port), 0,LOG_START);
 
   lngr.l_onoff = 1;
   lngr.l_linger= 1;
   EXIT_ON_WRONG_VALUE(-1,hostName,setsockopt(s,SOL_SOCKET,SO_LINGER,&lngr,sizeof(lngr)));
 
-//=============================================================================
+//======================================================================================================================
+  rwMsg requestMsg;
+  dataMsg datamsg;
+  ackMsg ackmsg;
+  errMsg errmsg;
 
 
+  headers msgType;
+  bool endTcpRead;
+  FILE * f = NULL;
+  long msgSize;
+  char dataBuffer[MSG_DATA_SIZE];
+
+  //read request to start protocol
+  msgSize = reciveMsg(s,buffer);
+  requestMsg = fillReadMsgWithBuffer(buffer);
+
+  fillBufferWithReadMsg(requestMsg, buffer);
+  EXIT_ON_WRONG_VALUE(TRUE,"Error on sending read/write request",(send(s, buffer, TAM_BUFFER, 0) != TAM_BUFFER));
+  //now is bifurcated in readmode and writemode + the file is opened
+
+  if( NULL == (f = fopen(requestMsg.fileName,"rb"))){
+    errmsg.header = ERR;
+    errmsg.errorCode = FILE_NOT_FOUND;
+    strcpy(errmsg.errorMsg,"FILE_NOT_FOUND");
+    fillBufferWithErrMsg(errmsg, buffer);
+    EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, TAM_BUFFER, 0) != TAM_BUFFER));
+    logError(errmsg.errorCode, errmsg.errorMsg);
+  }
+  
+  int bNumber = 0;
+
+  endTcpRead = FALSE;
+  if(requestMsg.header == READ){
+    while(!endTcpRead){
+logIssue("4");
+      //send new block
+      if( 0 > fread(dataBuffer, sizeof(char), TAM_BUFFER, f)){
+        memset(&errmsg,0,sizeof(errmsg));
+        errmsg.header = ERR;
+        errmsg.errorCode = UNKNOWN;
+        strcpy(errmsg.errorMsg,"UNKNOWN");
+        fillBufferWithErrMsg(errmsg, buffer);
+        EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, TAM_BUFFER, 0) != TAM_BUFFER));
+        logError(errmsg.errorCode, errmsg.errorMsg);
+      }else{
+        memset(&datamsg,0,sizeof(datamsg));
+        datamsg.header = DATA;
+        datamsg.blockNumber = bNumber++;
+        strcpy(datamsg.data, dataBuffer);
+        fillBufferWithDataMsg(datamsg,buffer);
+        EXIT_ON_WRONG_VALUE(TRUE,"Error on sending data block",(send(s, buffer, TAM_BUFFER, 0) != TAM_BUFFER));
+      }
+logIssue("5");
+      //log sended data 
+      logs(requestMsg.fileName,hostName, hostIp, "TCP", ntohs(clientaddr_in.sin_port), bNumber,LOG_NORMAL);
+logIssue("6");
+      //recive ack
+      msgSize = reciveMsg(s,buffer);
+      msgType = getMessageTypeWithBuffer(buffer);
+      switch(msgType){
+        case ACK: 
+          //TODO comprobar si ack es correcto?
+        break;
+        case ERR: 
+          errmsg = fillErrWithBuffer(buffer);
+          logError(errmsg.errorCode, errmsg.errorMsg);
+          exit(EXIT_FAILURE);
+        break;
+        default:
+          errmsg.header = ERR;
+          errmsg.errorCode = ILLEGAL_OPERATION;
+          sprintf(errmsg.errorMsg,"%d %s",msgType,"ILLEGAL OPERATION");
+          fillBufferWithErrMsg(errmsg, buffer);
+          EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, TAM_BUFFER, 0) != TAM_BUFFER));
+          logError(errmsg.errorCode, errmsg.errorMsg);
+          exit(EXIT_FAILURE);
+        break; 
+      }
+logIssue("7");
+    }
+
+  }else{
+
+
+  }
+
 //=============================================================================
+  fclose(f);
   close(s);
-  logs(hostName, hostIp, "TCP", clientaddr_in.sin_port, TRUE);
+  logs(requestMsg.fileName,hostName, hostIp, "TCP", ntohs(clientaddr_in.sin_port), 0, LOG_END);
 }
 
 void udpServer(int s, char * buffer, struct sockaddr_in clientaddr_in){
@@ -292,26 +403,35 @@ const char * getDateAndTime(){
 	return timeString;
 }
 
-void logError(char * errorMsg){
+void logIssue(char * asdf){
+  char toLog[LOG_MESSAGE_SIZE];
+  FILE*logFile = fopen(SERVER_LOG_PATH,"a+");
+  sprintf(toLog,"\n[%s][ISSUE][%s]",getDateAndTime(),asdf);
+  fprintf(logFile, "%s",toLog);
+  fclose(logFile);
+}
+
+void logError(int errorcode, char * errorMsg){
 	char toLog[LOG_MESSAGE_SIZE];
 	FILE*logFile = fopen(SERVER_LOG_PATH,"a+");
 
-	sprintf(toLog,"\n[%s][Connection][ERROR: %s]",getDateAndTime(),errorMsg);
+	sprintf(toLog,"\n[%s][Connection][ERROR: %d %s]",getDateAndTime(),errorcode,errorMsg);
 	fprintf(stderr,"%s",toLog);
 	fprintf(logFile, "%s",toLog);
 
 	fclose(logFile);
 }
 
-void logs(char * host, char * ip, char * protocol, int clientPort, bool end){
+void logs(char * file, char * host, char * ip, char * protocol, int clientPort, int blockNumber, int mode){
 	char toLog[LOG_MESSAGE_SIZE];
 	FILE*logFile = fopen(SERVER_LOG_PATH,"a+");
 
-	if(end){
-			sprintf(toLog,"\n[%s][Connection][SUCCED][HOST:%s][IP:%s][Protocol:%s][ClientPort:%d]",getDateAndTime(),host,ip,protocol,clientPort);
-	}else{
-		  sprintf(toLog,"\n[%s][Connection][HOST:%s][IP:%s][Protocol:%s][ClientPort:%d]",getDateAndTime(),host,ip,protocol,clientPort);
-	}
+  switch(mode){
+    case LOG_START: sprintf(toLog,"\n[%s][Host: %s][IP:%s][Protocol:%s][Port:%d][CONNECTION STARTED]",getDateAndTime(),host, ip, protocol, clientPort); break;
+    case LOG_NORMAL: sprintf(toLog,"\n[%s][Host: %s][IP:%s][Protocol:%s][Port:%d][File %10s][SEND BLOCK:%d]",getDateAndTime(),host, ip, protocol, clientPort,file,blockNumber); break;
+    case LOG_END: sprintf(toLog,"\n[%s][Host: %s][IP:%s][Protocol:%s][Port:%d][File %10s][SUCCED]",getDateAndTime(),host, ip, protocol, clientPort,file); break;
+  }
+
 	fprintf(stderr,"%s",toLog);
 	fprintf(logFile, "%s",toLog);
 

@@ -18,11 +18,14 @@ runServer: server removeCompilationWaste
 
 runClient: client removeCompilationWaste
 		clear
-		./client 127.20.2.164 TCP r test.txt
+		./client 127.20.2.164 TCP r f1.txt
 clean:
 	rm client
 	rm server
+	rm peticiones.log
+	rm *.txt
 	killall -9 server
+	echo "HOLA SOY UNA PRUEBA Y OJALA SALGA BIEN " > f1.txt
 	clear
 
 removeCompilationWaste:

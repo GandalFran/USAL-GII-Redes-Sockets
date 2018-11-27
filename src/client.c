@@ -70,33 +70,26 @@ int main(int argc, char * argv[]){
 
 //========================================================================================================================
 
-void reciveMsg(int s, char * buffer){
-	int i,j;
-	memset(buffer,0,sizeof(buffer));
+int reciveMsg(int s, char * buffer){
+  int i=0,j;
+  memset(buffer,0,sizeof(buffer));
+/*
+    while (i = recv(s, buffer, TAM_BUFFER, 0) && i<sizeof(rwMsg)) {
+      EXIT_ON_WRONG_VALUE(-1,"error reading msg", i);
+      logIssue("enteringLoop2");
+      while (i < TAM_BUFFER ) {
+      logIssue("into loop 2");
+        j = recv(s, &buffer[i], TAM_BUFFER-i, 0);
+        logIssue("loop2.2");
+        EXIT_ON_WRONG_VALUE(-1,"error reading msg", j);
+        i += j;
+      }
+      logIssue("loop2ended");
+    }
+    logIssue("loop3");
+*/
 
-		while (i = recv(s, buffer, TAM_BUFFER, 0)) {
-			EXIT_ON_WRONG_VALUE(-1,"error reading msg", i);
-			/* The reason this while loop exists is that there
-			 * is a remote possibility of the above recv returning
-			 * less than BUFFER_SIZE bytes.  This is because a recv returns
-			 * as soon as there is some data, and will not wait for
-			 * all of the requested data to arrive.  Since BUFFER_SIZE bytes
-			 * is relatively small compared to the allowed TCP
-			 * packet sizes, a partial receive is unlikely.  If
-			 * this example had used 2048 bytes requests instead,
-			 * a partial receive would be far more likely.
-			 * This loop will keep receiving until all BUFFER_SIZE bytes
-			 * have been received, thus guaranteeing that the
-			 * next recv at the top of the loop will start at
-			 * the begining of the next reply.
-			 */
-			while (i < TAM_BUFFER) {
-				j = recv(s, &buffer[i], TAM_BUFFER-i, 0);
-				EXIT_ON_WRONG_VALUE(-1,"error reading msg", j);
-				i += j;
-			}
-			/* Print out message indicating the identity of this reply. */
-		}
+  recv(s, buffer, TAM_BUFFER, 0);
 }
 
 
@@ -173,6 +166,7 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 	headers msgType;
 	bool end;
 	FILE * f = NULL;
+	long msgSize;
 
 	//log the connection
 	logc(hostName, ntohs(myaddr_in.sin_port), file, 0, LOG_START);
@@ -186,13 +180,15 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 	EXIT_ON_WRONG_VALUE(TRUE,"Error on sending read/write request",(send(s, buffer, TAM_BUFFER, 0) != TAM_BUFFER));
 
 	//now is bifurcated in readmode and writemode + the file is opened
-	f = fopen(file,"wb");
+	char destionationFile[30];
+	sprintf(destionationFile,"CLIENT%s",file);
+	f = fopen(file,"wb+");
 
 	end = FALSE;
 	if(isReadMode){
 		while(!end){
 			numberOfmessages++;
-			reciveMsg(s,buffer);
+			msgSize = reciveMsg(s,buffer);
 			msgType = getMessageTypeWithBuffer(buffer);
 			switch(msgType){
 				case DATA: 
@@ -201,7 +197,8 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 				break;
 				case ERR: 
 					errmsg = fillErrWithBuffer(buffer);
-					logError(hostName, ntohs(myaddr_in.sin_port), errmsg.errorCode, errmsg.errorMsg);
+					logError("desde la 200", ntohs(myaddr_in.sin_port), errmsg.errorCode, errmsg.errorMsg);
+					exit(EXIT_FAILURE);
 				break;
 				default:
 					errmsg.header = ERR;
@@ -210,6 +207,7 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 					fillBufferWithErrMsg(errmsg, buffer);
 					EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, TAM_BUFFER, 0) != TAM_BUFFER));
 					logError(hostName, ntohs(myaddr_in.sin_port), errmsg.errorCode, errmsg.errorMsg);
+					exit(EXIT_FAILURE);
 				break; 
 			}
 
@@ -218,6 +216,9 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 			ackmsg.blockNumber = datamsg.blockNumber;
 			fillBufferWithAckMsg(ackmsg, buffer);
 			EXIT_ON_WRONG_VALUE(TRUE,"Error on sending ack for block",(send(s, buffer, TAM_BUFFER, 0) != TAM_BUFFER));
+
+			if(msgSize != TAM_BUFFER*sizeof(char))
+				end = TRUE;
 
 			//log received data 
 			logc(hostName, ntohs(myaddr_in.sin_port), file, datamsg.blockNumber, LOG_END);
