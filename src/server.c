@@ -17,12 +17,13 @@
 #include <sys/errno.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include "../utils/utils.h"
-#include "../utils/msgUtils.h"
+#include "utils/utils.h"
+#include "utils/msgUtils.h"
 
 #define ADDRNOTFOUND	0xffffffff	/* return address for unfound host */
 #define BUFFERSIZE	1024	/* maximum size of packets to be received */
 #define MAXHOST 128
+
 
 //var to end the server loop
 bool end = FALSE;
@@ -36,7 +37,7 @@ void udpServer(int s, char * buffer, struct sockaddr_in clientaddr_in);
 //others
 void redefineSignal(int signal, void(*function)(int));
 void logError(char * errorMsg);
-void logs(char * ip, char * protocol, int clientPort, bool end);
+void logs(char*host, char * ip, char * protocol, int clientPort, bool end);
 
 #define EXIT_ON_WRONG_VALUE(wrongValue, errorMsg, returnValue)                          \
 do{                                              		    	                              \
@@ -82,8 +83,8 @@ int main(int argc, char * argv[]){
   	EXIT_ON_WRONG_VALUE(-1,"Unable to create socket listen TCP",ls_TCP = socket (AF_INET, SOCK_STREAM, 0));
   	/* clear out address structures */
   	memset (&myaddr_in, 0, sizeof(struct sockaddr_in));
-    memset (&clientaddr_in, 0, sizeof(struct sockaddr_in));
-    addrlen = sizeof(struct sockaddr_in);
+	memset (&clientaddr_in, 0, sizeof(struct sockaddr_in));
+	addrlen = sizeof(struct sockaddr_in);
 
   	/* Set up address structure for the listen socket. */
   	myaddr_in.sin_family = AF_INET;
@@ -214,7 +215,7 @@ int main(int argc, char * argv[]){
               buffer[cc]='\0';
               udpServer (s_UDP, buffer, clientaddr_in);
           }
-	    }
+	}
 
      //close handlers
      close(s_UDP);
@@ -222,15 +223,41 @@ int main(int argc, char * argv[]){
      exit(EXIT_SUCCESS);
 }
 
-//https://github.com/amit-mittal/TFTP/blob/master/tftp_s.c
+#define HOSTNAME_SIZE 100
+#define HOSTIP_SIZE 100
+#define BUFFER_SIZE 1024
+
 void tcpServer(int s, struct sockaddr_in clientaddr_in){
-  logs(inet_ntoa(clientaddr_in.sin_addr), "TCP", clientaddr_in.sin_port, FALSE);
-  
-  logs(inet_ntoa(clientaddr_in.sin_addr), "TCP", clientaddr_in.sin_port, TRUE);
+
+  rwMsg rwmsg;
+  dataMsg dataMsg;
+  errMsg errorMsg;
+
+  int numRequests = 0;
+  char hostName[HOSTNAME_SIZE];
+  char hostIp[HOSTIP_SIZE];
+  struct linger lngr;
+
+  //obtain the host information to start communicacion with remote host
+  if( getnameinfo((struct sockaddr *)&clientaddr_in,sizeof(clientaddr_in),hostName,sizeof(hostName),NULL,0,0) )
+  	EXIT_ON_WRONG_VALUE(NULL,"error inet_ntop",inet_ntop(AF_INET,&clientaddr_in.sin_addr,hostName,sizeof(hostName)));
+
+  strcpy(hostIp, inet_ntoa(clientaddr_in.sin_addr));
+  logs(hostName, hostIp, "TCP", clientaddr_in.sin_port, FALSE);
+
+  lngr.l_onoff = 1;
+  lngr.l_linger= 1;
+  EXIT_ON_WRONG_VALUE(-1,hostName,setsockopt(s,SOL_SOCKET,SO_LINGER,&lngr,sizeof(lngr)));
+
+//=============================================================================
+
+
+//=============================================================================
+  close(s);
+  logs(hostName, hostIp, "TCP", clientaddr_in.sin_port, TRUE);
 }
 
 void udpServer(int s, char * buffer, struct sockaddr_in clientaddr_in){
-  static dataMsg * ultimasPeticiones[BUFFERSIZE];
   fprintf(stderr, "%s\n","UDP SERVER");
 }
 
@@ -242,6 +269,8 @@ void SIGALRMHandler(int ss){
 
 }
 
+//=================================================================================================
+
 void redefineSignal(int signal, void(*function)(int)){
   struct sigaction ss;
   memset(&ss,0,sizeof(ss));
@@ -252,6 +281,8 @@ void redefineSignal(int signal, void(*function)(int)){
   EXIT_ON_WRONG_VALUE(-1,"signal error",sigfillset(&ss.sa_mask));
   EXIT_ON_WRONG_VALUE(-1,"signal error",sigaction(signal,&ss,NULL));
 }
+
+//=================================================================================================
 
 const char * getDateAndTime(){
 	static char timeString[TIME_STRING_SIZE];
@@ -272,14 +303,14 @@ void logError(char * errorMsg){
 	fclose(logFile);
 }
 
-void logs(char * ip, char * protocol, int clientPort, bool end){
+void logs(char * host, char * ip, char * protocol, int clientPort, bool end){
 	char toLog[LOG_MESSAGE_SIZE];
 	FILE*logFile = fopen(SERVER_LOG_PATH,"a+");
 
 	if(end){
-			sprintf(toLog,"\n[%s][Connection][SUCCED][IP:%15s][Protocol:%3s][ClientPort:%5d]",getDateAndTime(),ip,protocol,clientPort);
+			sprintf(toLog,"\n[%s][Connection][SUCCED][HOST:%s][IP:%s][Protocol:%s][ClientPort:%d]",getDateAndTime(),host,ip,protocol,clientPort);
 	}else{
-		  sprintf(toLog,"\n[%s][Connection][IP:%15s][Protocol:%3s][ClientPort:%5d]",getDateAndTime(),ip,protocol,clientPort);
+		  sprintf(toLog,"\n[%s][Connection][HOST:%s][IP:%s][Protocol:%s][ClientPort:%d]",getDateAndTime(),host,ip,protocol,clientPort);
 	}
 	fprintf(stderr,"%s",toLog);
 	fprintf(logFile, "%s",toLog);

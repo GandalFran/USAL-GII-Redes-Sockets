@@ -14,10 +14,10 @@
 
 #define TIME_STRING_SIZE 100
 #define LOG_MESSAGE_SIZE 1000
-
 #define SERVER_LOG_PATH "peticiones.log"
 
 #define PORT 8455
+#define TAM_BUFFER 600
 
 #define TRUE 1
 #define FALSE 0
