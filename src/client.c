@@ -50,7 +50,6 @@ void udpClient(bool isReadMode, char * hostName, char * file);
 int main(int argc, char * argv[]){
 	//Register handlers for signals
 
-
 	//Check the args are correct
 	if( argc != 5
 		|| (!strcmp(argv[2],TCP_ARG) && !strcmp(argv[2],UDP_ARG))
@@ -172,11 +171,7 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 	logc(hostName, ntohs(myaddr_in.sin_port), file, 0, LOG_START);
 
 	//send request to start protocol
-	requestMsg.header = (isReadMode) ? (READ) : (WRITE);
-	strcpy(requestMsg.fileName,file);
-	strcpy(requestMsg.characterMode,OCTET_MODE);
-	numberOfmessages++;
-	fillBufferWithReadMsg(requestMsg, buffer);
+	fillBufferWithReadMsg(isReadMode,file, buffer);
 	EXIT_ON_WRONG_VALUE(TRUE,"Error on sending read/write request",(send(s, buffer, TAM_BUFFER, 0) != TAM_BUFFER));
 
 	//now is bifurcated in readmode and writemode + the file is opened
@@ -187,7 +182,6 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 	end = FALSE;
 	if(isReadMode){
 		while(!end){
-			numberOfmessages++;
 			msgSize = reciveMsg(s,buffer);
 			msgType = getMessageTypeWithBuffer(buffer);
 			switch(msgType){
@@ -201,27 +195,22 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 					exit(EXIT_FAILURE);
 				break;
 				default:
-					errmsg.header = ERR;
-					errmsg.errorCode = ILLEGAL_OPERATION;
-					strcpy(errmsg.errorMsg,"ILLEGAL OPERATION");
-					fillBufferWithErrMsg(errmsg, buffer);
+					fillBufferWithErrMsg(ILLEGAL_OPERATION,"ILLEGAL_OPERATION", buffer);
 					EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, TAM_BUFFER, 0) != TAM_BUFFER));
-					logError(hostName, ntohs(myaddr_in.sin_port), errmsg.errorCode, errmsg.errorMsg);
+					logError(hostName, ntohs(myaddr_in.sin_port), /*errmsg.errorCode*/msgType, "ILLEGAL_OPERATION");
 					exit(EXIT_FAILURE);
 				break; 
 			}
 
 			//send ack
-			ackmsg.header = ACK;
-			ackmsg.blockNumber = datamsg.blockNumber;
-			fillBufferWithAckMsg(ackmsg, buffer);
+			fillBufferWithAckMsg(datamsg.blockNumber, buffer);
 			EXIT_ON_WRONG_VALUE(TRUE,"Error on sending ack for block",(send(s, buffer, TAM_BUFFER, 0) != TAM_BUFFER));
 
 			if(msgSize != TAM_BUFFER*sizeof(char))
 				end = TRUE;
 
 			//log received data 
-			logc(hostName, ntohs(myaddr_in.sin_port), file, datamsg.blockNumber, LOG_END);
+			logc(hostName, ntohs(myaddr_in.sin_port), file, datamsg.blockNumber, LOG_NORMAL);
 		}
 
 	}else{

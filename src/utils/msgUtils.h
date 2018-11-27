@@ -60,10 +60,9 @@ dataMsg fillDataWithBuffer(char * buffer);
 ackMsg fillAckWithBuffer(char * buffer);
 errMsg fillErrWithBuffer(char * buffer);
 
-void fillBufferWithReadMsg(rwMsg msg, char * buffer);
-void fillBufferWithDataMsg(dataMsg msg, char * buffer);
-void fillBufferWithAckMsg(ackMsg msg, char * buffer);
-void fillBufferWithErrMsg(errMsg msg, char * buffer);
-
+void fillBufferWithReadMsg(bool isRead,char * fileName, char * buffer);
+void fillBufferWithDataMsg(int blockNumber, char * data , char * buffer);
+void fillBufferWithAckMsg(int blockNumber, char * buffer);
+void fillBufferWithErrMsg(errorMsgCodes errorcode, char * errorMsg, char * buffer);
 
 #endif

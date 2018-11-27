@@ -1,0 +1,7 @@
+
+[2018-11-27 22:43:3][Host: 192.168.70.1][Port:54282][File     f1.txt][Send block:-96]
+[2018-11-27 22:43:3][Host: 192.168.70.1][Port:54282][File     f1.txt][Send block:-95]
+[2018-11-27 22:43:3][Host: 192.168.70.1][Port:54282][File     f1.txt][Send block:-94]
+[2018-11-27 22:43:3][Host: 192.168.70.1][Port:54282][File     f1.txt][Send block:-93]
+[2018-11-27 22:43:3][Host: 192.168.70.1][Port:54282][File     f1.txt][Send block:-92]
+[2018-11-27 22:43:3][Host: 192.168.70.1][Port:54282][ERROR: 0 ILLEGAL_OPERATION]

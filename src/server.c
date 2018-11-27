@@ -292,46 +292,30 @@ void tcpServer(int s, struct sockaddr_in clientaddr_in){
   msgSize = reciveMsg(s,buffer);
   requestMsg = fillReadMsgWithBuffer(buffer);
 
-  fillBufferWithReadMsg(requestMsg, buffer);
-  EXIT_ON_WRONG_VALUE(TRUE,"Error on sending read/write request",(send(s, buffer, TAM_BUFFER, 0) != TAM_BUFFER));
   //now is bifurcated in readmode and writemode + the file is opened
-
   if( NULL == (f = fopen(requestMsg.fileName,"rb"))){
-    errmsg.header = ERR;
-    errmsg.errorCode = FILE_NOT_FOUND;
-    strcpy(errmsg.errorMsg,"FILE_NOT_FOUND");
-    fillBufferWithErrMsg(errmsg, buffer);
+    fillBufferWithErrMsg(FILE_NOT_FOUND,"FILE_NOT_FOUND", buffer);
     EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, TAM_BUFFER, 0) != TAM_BUFFER));
-    logError(errmsg.errorCode, errmsg.errorMsg);
+    logError(FILE_NOT_FOUND, "FILE_NOT_FOUND");
   }
   
   int bNumber = 0;
-
   endTcpRead = FALSE;
   if(requestMsg.header == READ){
     while(!endTcpRead){
-logIssue("4");
       //send new block
       if( 0 > fread(dataBuffer, sizeof(char), TAM_BUFFER, f)){
-        memset(&errmsg,0,sizeof(errmsg));
-        errmsg.header = ERR;
-        errmsg.errorCode = UNKNOWN;
-        strcpy(errmsg.errorMsg,"UNKNOWN");
-        fillBufferWithErrMsg(errmsg, buffer);
+        fillBufferWithErrMsg(UNKNOWN,"UNKNOWN", buffer);
         EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, TAM_BUFFER, 0) != TAM_BUFFER));
-        logError(errmsg.errorCode, errmsg.errorMsg);
+        logError(UNKNOWN, "UNKNOWN");
       }else{
-        memset(&datamsg,0,sizeof(datamsg));
-        datamsg.header = DATA;
-        datamsg.blockNumber = bNumber++;
-        strcpy(datamsg.data, dataBuffer);
-        fillBufferWithDataMsg(datamsg,buffer);
+        fillBufferWithDataMsg(bNumber++,dataBuffer,buffer);
         EXIT_ON_WRONG_VALUE(TRUE,"Error on sending data block",(send(s, buffer, TAM_BUFFER, 0) != TAM_BUFFER));
       }
-logIssue("5");
+
       //log sended data 
       logs(requestMsg.fileName,hostName, hostIp, "TCP", ntohs(clientaddr_in.sin_port), bNumber,LOG_NORMAL);
-logIssue("6");
+
       //recive ack
       msgSize = reciveMsg(s,buffer);
       msgType = getMessageTypeWithBuffer(buffer);
@@ -345,16 +329,13 @@ logIssue("6");
           exit(EXIT_FAILURE);
         break;
         default:
-          errmsg.header = ERR;
-          errmsg.errorCode = ILLEGAL_OPERATION;
-          sprintf(errmsg.errorMsg,"%d %s",msgType,"ILLEGAL OPERATION");
-          fillBufferWithErrMsg(errmsg, buffer);
+          fillBufferWithErrMsg(/*errmsg.errorCode*/ILLEGAL_OPERATION, "ILLEGAL_OPERATION", buffer);
           EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, TAM_BUFFER, 0) != TAM_BUFFER));
-          logError(errmsg.errorCode, errmsg.errorMsg);
+          logError(ILLEGAL_OPERATION, "ILLEGAL_OPERATION");
           exit(EXIT_FAILURE);
         break; 
       }
-logIssue("7");
+
     }
 
   }else{

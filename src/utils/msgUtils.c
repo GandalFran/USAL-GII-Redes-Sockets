@@ -21,8 +21,10 @@ rwMsg fillReadMsgWithBuffer(char * buffer){
 	memset(&msg,0,sizeof(rwMsg));
 
 	msg.header = (short) (buffer[1])? READ : WRITE;
-	strncpy(msg.fileName,&(buffer[2]),MSG_FILE_NAME_SIZE);
-	strncpy(msg.characterMode,&(buffer[2 + MSG_FILE_NAME_SIZE]),MSG_MODE_SIZE);
+	strcpy(msg.fileName,&(buffer[2]));
+	strcpy(msg.characterMode,&(buffer[2 + MSG_FILE_NAME_SIZE]));
+
+	return msg;
 }
 dataMsg fillDataWithBuffer(char * buffer){
 	dataMsg msg;
@@ -31,6 +33,7 @@ dataMsg fillDataWithBuffer(char * buffer){
 	msg.header = buffer[1];
 	msg.blockNumber = buffer[3];
 	strncpy(msg.data,&(buffer[4]),MSG_DATA_SIZE);
+	return msg;
 }
 ackMsg fillAckWithBuffer(char * buffer){
 	ackMsg msg;
@@ -38,6 +41,7 @@ ackMsg fillAckWithBuffer(char * buffer){
 
 	msg.header = buffer[1];
 	msg.blockNumber = buffer[3];
+	return msg;
 }
 errMsg fillErrWithBuffer(char * buffer){
 	errMsg msg;
@@ -46,33 +50,34 @@ errMsg fillErrWithBuffer(char * buffer){
 	msg.header = buffer[1];
 	msg.errorCode = buffer[3];
 	strncpy(msg.errorMsg,&(buffer[4]),MSG_ERROR_SIZE);
+	return msg;
 }
 
 
-void fillBufferWithReadMsg(rwMsg msg, char * buffer){
+void fillBufferWithReadMsg(bool isRead,char * fileName, char * buffer){
 	memset(buffer,0,sizeof(buffer));
 
-	buffer[1] = msg.header;
-	strncpy(&(buffer[2]),msg.fileName,MSG_FILE_NAME_SIZE);
-	strncpy(&(buffer[2 + MSG_FILE_NAME_SIZE]),msg.characterMode,MSG_MODE_SIZE);
+	buffer[1] = isRead ? READ : WRITE;
+	strncpy(&(buffer[2]),fileName,MSG_FILE_NAME_SIZE);
+	strncpy(&(buffer[2 + MSG_FILE_NAME_SIZE-1]),OCTET_MODE,MSG_MODE_SIZE);
 }
-void fillBufferWithDataMsg(dataMsg msg, char * buffer){
+void fillBufferWithDataMsg(int blockNumber, char * data , char * buffer){
 	memset(buffer,0,sizeof(buffer));
 
-	buffer[1] = msg.header;
-	buffer[3] = msg.blockNumber;
-	strncpy(&(buffer[4]),msg.data,MSG_DATA_SIZE);
+	buffer[1] = DATA;
+	buffer[3] = blockNumber;
+	strncpy(&(buffer[4]),data,MSG_DATA_SIZE);
 }
-void fillBufferWithAckMsg(ackMsg msg, char * buffer){
+void fillBufferWithAckMsg(int blockNumber, char * buffer){
 	memset(buffer,0,sizeof(buffer));
 
-	buffer[1] = msg.header;
-	buffer[3] = msg.blockNumber;
+	buffer[1] = ACK;
+	buffer[3] = blockNumber;
 }
-void fillBufferWithErrMsg(errMsg msg, char * buffer){
+void fillBufferWithErrMsg(errorMsgCodes errorcode, char * errorMsg, char * buffer){
 	memset(buffer,0,sizeof(buffer));
 
-	buffer[1] = msg.header;
-	buffer[3] = msg.errorCode;
-	strncpy(&(buffer[4]),msg.errorMsg,MSG_ERROR_SIZE);
+	buffer[1] = ERR;
+	buffer[3] = errorcode;
+	strncpy(&(buffer[4]),errorMsg,MSG_ERROR_SIZE);
 }
