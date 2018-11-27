@@ -37,6 +37,8 @@
  *
  */
 
+
+
 void tcpReadMode(char * hostName, char * file){
     int s;				/* connected socket descriptor */
     struct addrinfo hints, *res;
@@ -100,7 +102,21 @@ void tcpReadMode(char * hostName, char * file){
 	printf("CLIENT  Connected to %s on port %u at %s", hostName, ntohs(myaddr_in.sin_port), (char *) ctime(&timevar));
 
 //============================================ TFTP
+send request
+wait for response
+try N times untill response or timeout
 
+
+bool end = FALSE;
+while(! end){
+    recive
+    send ack
+    if error in some log and exit
+}
+
+log succed
+//============================================END TFTP
+//============================================ EXAMPLE
 	for (i=1; i<=5; i++) {
 		*buf = i;
 		if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER) {
@@ -151,7 +167,7 @@ void tcpReadMode(char * hostName, char * file){
 		printf("CLIENT Received result number %d\n", *buf);
 	}
 
-//============================================END TFTP
+//============================================END EXAMPLE
 	/* Print message indicating completion of task. */
 	time(&timevar);
 	printf("CLIENT  All done at %s", (char *)ctime(&timevar));
