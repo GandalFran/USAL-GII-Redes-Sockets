@@ -28,13 +28,13 @@
 #define WRITE_ARG "w"
 
 #define EXIT_ON_WRONG_VALUE(wrongValue, errorMsg, returnValue)                          \
-do{                                              		    	                              \
-    if((returnValue) == (wrongValue)){		    	                                        \
+do{                                              		    	                        \
+    if((returnValue) == (wrongValue)){		    	                                    \
         char errorTag[200];                                                             \
         fprintf(stderr, "\n[%s:%d:%s]%s", __FILE__, __LINE__, __FUNCTION__,errorMsg);   \
-        exit(EXIT_SUCCESS);		    	                                                    \
+        exit(EXIT_SUCCESS);		    	                                                \
         exit(0);                                                                        \
-    }		    	                                                                          \
+    }		    	                                                                    \
 }while(0)
 
 #define LOG_START 0 
@@ -87,32 +87,33 @@ int reciveMsg(int s, char * buffer){
     }
     logIssue("loop3");
 */
-
-  recv(s, buffer, TAM_BUFFER, 0);
+  	j = recv(s, buffer, TAM_BUFFER, 0);
+  	//if(j< TAM_BUFFER)
+  		buffer[j] = '\0';
+  	return j;
 }
 
 
-/*
- *			C L I E N T C P
- *
- *	This is an example program that demonstrates the use of
- *	stream sockets as an IPC mechanism.  This contains the client,
- *	and is intended to operate in conjunction with the server
- *	program.  Together, these two programs
- *	demonstrate many of the features of sockets, as well as good
- *	conventions for using these features.
- *
- *
- */
-
 void tcpClient(bool isReadMode, char * hostName, char * file){
-    int s;				/* connected socket descriptor */
-    int numberOfmessages = 0;
+    int s, addrlen, errcode;				
     struct addrinfo hints, *res;
-    struct sockaddr_in myaddr_in;	/* for local socket address */
-    struct sockaddr_in servaddr_in;	/* for server socket address */
-	int addrlen, i, j, errcode;
-    /* This example uses BUFFER_SIZE byte messages. */
+    struct sockaddr_in myaddr_in;	    
+    struct sockaddr_in servaddr_in;	
+
+    bool endSesion;
+
+    int port;
+
+	rwMsg requestMsg;
+	dataMsg datamsg;
+	ackMsg ackmsg;
+	errMsg errmsg;
+	headers msgType;
+
+	FILE * f = NULL;
+	int blockNumber = 0;
+	int msgSize, writeResult;
+
 	char buffer[TAM_BUFFER];
 
 	/* Create the socket. */
@@ -135,82 +136,87 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 
 	/* Copy address of host */
 	servaddr_in.sin_addr = ((struct sockaddr_in *) res->ai_addr)->sin_addr;
-
  	freeaddrinfo(res);
-
-  	/* puerto del servidor en orden de red*/
 	servaddr_in.sin_port = htons(PORT);
-
-	/* Try to connect to the remote server at the address
-	 *  which was just built into peeraddr.
-	 */
 	EXIT_ON_WRONG_VALUE(-1, " unable to connect to remote", connect(s, (const struct sockaddr *)&servaddr_in, sizeof(struct sockaddr_in)));
-	/* Since the connect call assigns a free address
-	 * to the local end of this connection, let's use
-	 * getsockname to see what it assigned.  Note that
-	 * addrlen needs to be passed in as a pointer,
-	 * because getsockname returns the actual length
-	 * of the address.
-	 */
-	addrlen = sizeof(struct sockaddr_in);
+
 	//returns the information of our socket
+	addrlen = sizeof(struct sockaddr_in);
 	EXIT_ON_WRONG_VALUE(-1,"unable to read socket address", getsockname(s, (struct sockaddr *)&myaddr_in, &addrlen));
 
-
-//======================================================================================================================
-	rwMsg requestMsg;
-	dataMsg datamsg;
-	ackMsg ackmsg;
-	errMsg errmsg;
-	headers msgType;
-	bool end;
-	FILE * f = NULL;
-	long msgSize;
-
 	//log the connection
-	logc(hostName, ntohs(myaddr_in.sin_port), file, 0, LOG_START);
+	port = ntohs(myaddr_in.sin_port);
+	logc(hostName, port, file, 0, LOG_START);
 
 	//send request to start protocol
-	fillBufferWithReadMsg(isReadMode,file, buffer);
-	EXIT_ON_WRONG_VALUE(TRUE,"Error on sending read/write request",(send(s, buffer, TAM_BUFFER, 0) != TAM_BUFFER));
+	msgSize = fillBufferWithReadMsg(isReadMode,file, buffer);
+	EXIT_ON_WRONG_VALUE(TRUE,"Error on sending read/write request",(send(s, buffer, msgSize, 0) != msgSize));
 
-	//now is bifurcated in readmode and writemode + the file is opened
+	//open the file to write
 	char destionationFile[30];
 	sprintf(destionationFile,"CLIENT%s",file);
-	f = fopen(file,"wb+");
+	f = fopen(destionationFile,"wb+");
 
-	end = FALSE;
+	//bifurcate into read or write
 	if(isReadMode){
-		while(!end){
+
+		endSesion = FALSE;
+		while(!endSesion){
+fprintf(stderr, "1\n" );
+			//recive first one block
 			msgSize = reciveMsg(s,buffer);
-			msgType = getMessageTypeWithBuffer(buffer);
-			switch(msgType){
-				case DATA: 
-					datamsg = fillDataWithBuffer(buffer);
-					fwrite(datamsg.data,sizeof(char),MSG_DATA_SIZE,f);
+fprintf(stderr, "2\n" );
+			//act according to type
+			switch(getMessageTypeWithBuffer(buffer)){
+				case DATA_TYPE:
+
+				fprintf(stderr, "3\n" );
+					datamsg = fillDataWithBuffer(msgSize,buffer);
+
+				fprintf(stderr, "4\n" );
+					//check if block number is the correct one
+					if(datamsg.blockNumber != blockNumber ){
+						msgSize = fillBufferWithErrMsg(UNKNOWN,"UNKNOWN", buffer);
+					    EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));
+					    logError(hostName,port,UNKNOWN, "UNKNOWN");
+					    exit(EXIT_FAILURE);
+					}
+					//write the send data
+					fprintf(stderr, "6\n" );
+					writeResult = fwrite(datamsg.data,sizeof(char),DATA_SIZE(msgSize),f);
+					fprintf(stderr, "ADF\n" );
+					if(-1 == writeResult){
+						msgSize = fillBufferWithErrMsg(DISK_FULL,"DISK_FULL", buffer);
+					    EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));
+					    logError(hostName,port,DISK_FULL, "DISK_FULL");
+					    exit(EXIT_FAILURE);
+					}
+					//check if the block is the last -- size less than 512 bytes
+					if(msgSize < MSG_DATA_SIZE)
+						endSesion = TRUE;
+					//increment block number 
+					blockNumber += 1;
 				break;
-				case ERR: 
+				case ERR_TYPE: 
+				fprintf(stderr, "3\n" );
 					errmsg = fillErrWithBuffer(buffer);
-					logError("desde la 200", ntohs(myaddr_in.sin_port), errmsg.errorCode, errmsg.errorMsg);
-					exit(EXIT_FAILURE);
+		            logError(hostName,port,errmsg.errorCode, errmsg.errorMsg);
+		            exit(EXIT_FAILURE);
 				break;
 				default:
-					fillBufferWithErrMsg(ILLEGAL_OPERATION,"ILLEGAL_OPERATION", buffer);
-					EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, TAM_BUFFER, 0) != TAM_BUFFER));
-					logError(hostName, ntohs(myaddr_in.sin_port), /*errmsg.errorCode*/msgType, "ILLEGAL_OPERATION");
-					exit(EXIT_FAILURE);
+					msgSize = fillBufferWithErrMsg(ILLEGAL_OPERATION,"ILLEGAL_OPERATION", buffer);
+	                EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));
+	                logError(hostName,port,getMessageTypeWithBuffer(buffer), &buffer[4]);
+	                exit(EXIT_FAILURE);
 				break; 
 			}
 
 			//send ack
-			fillBufferWithAckMsg(datamsg.blockNumber, buffer);
-			EXIT_ON_WRONG_VALUE(TRUE,"Error on sending ack for block",(send(s, buffer, TAM_BUFFER, 0) != TAM_BUFFER));
-
-			if(msgSize != TAM_BUFFER*sizeof(char))
-				end = TRUE;
-
+			msgSize = fillBufferWithAckMsg(datamsg.blockNumber, buffer);
+			EXIT_ON_WRONG_VALUE(TRUE,"Error on sending ack for block",(send(s, buffer, msgSize, 0) != msgSize));
+fprintf(stderr, "4\n" );
 			//log received data 
-			logc(hostName, ntohs(myaddr_in.sin_port), file, datamsg.blockNumber, LOG_NORMAL);
+			logc(hostName, port, file, datamsg.blockNumber, LOG_NORMAL);
 		}
 
 	}else{
@@ -220,7 +226,7 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 
 
 	fclose(f);
-	logc(hostName, ntohs(myaddr_in.sin_port), file, 0, LOG_END);
+	logc(hostName, port, file, 0, LOG_END);
 
 	/* Now, shutdown the connection for further sends.
 	 * This will cause the server to receive an end-of-file
@@ -233,7 +239,6 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 	close(s);
 
 }
-
 
 void udpClient(bool isReadMode, char * hostName, char * file){
 

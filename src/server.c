@@ -251,12 +251,145 @@ int reciveMsg(int s, char * buffer){
     logIssue("loop3");
 */
 
-  recv(s, buffer, TAM_BUFFER, 0);
+    j = recv(s, buffer, TAM_BUFFER, 0);
+    if(j< TAM_BUFFER)
+        buffer[j] = '\0';
+    return j;
 }
 
 
 
+void tcpServer(int s, struct sockaddr_in clientaddr_in){
+  int port;
+  char hostIp[HOSTIP_SIZE];
+  char hostName[HOSTNAME_SIZE];
 
+  ackMsg ackmsg;
+  errMsg errmsg;
+  dataMsg datamsg;
+  rwMsg requestmsg;
+
+  char buffer[TAM_BUFFER];
+
+  FILE * f = NULL;
+  int blockNumber = 0;
+  char dataBuffer[MSG_DATA_SIZE];
+
+  int msgSize, readSize;
+  bool endSesion = FALSE;
+
+  //obtain the host information to start communicacion with remote host
+  if( getnameinfo((struct sockaddr *)&clientaddr_in,sizeof(clientaddr_in),hostName,sizeof(hostName),NULL,0,0) )
+    EXIT_ON_WRONG_VALUE(NULL,"error inet_ntop",inet_ntop(AF_INET,&clientaddr_in.sin_addr,hostName,sizeof(hostName)));
+
+  port = ntohs(clientaddr_in.sin_port);
+  strcpy(hostIp, inet_ntoa(clientaddr_in.sin_addr));
+  logs(NULL, hostName, hostIp, "TCP", port, 0,LOG_START);
+
+  //set opMode
+  struct linger lngr;
+  lngr.l_onoff = 1;
+  lngr.l_linger= 1;
+  EXIT_ON_WRONG_VALUE(-1,hostName,setsockopt(s,SOL_SOCKET,SO_LINGER,&lngr,sizeof(lngr)));
+
+  //read client request to know if is required read or write
+  msgSize = reciveMsg(s,buffer);
+  requestmsg = fillReadMsgWithBuffer(buffer);
+
+  //if the msg isnt a request send error 
+  if(READ_TYPE != requestmsg.header && WRITE_TYPE != requestmsg.header){
+    msgSize = fillBufferWithErrMsg(ILLEGAL_OPERATION,"ILLEGAL_OPERATION", buffer);
+    EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));
+    logError(FILE_NOT_FOUND, "FILE_NOT_FOUND");
+    exit(EXIT_FAILURE);
+  }
+  
+  //open the request file and check if exists 
+  if(NULL == (f = fopen(requestmsg.fileName,"rb"))){
+    //if error send error msg 
+    msgSize = fillBufferWithErrMsg(FILE_NOT_FOUND,"FILE_NOT_FOUND", buffer);
+    EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));
+    logError(FILE_NOT_FOUND, requestmsg.fileName);
+    exit(EXIT_FAILURE);
+  }
+
+char tag[300];
+  //obtain the request type and bifurcate 
+  if(requestmsg.header == READ_TYPE){
+      while(!endSesion){
+        //send block 
+          readSize = fread(dataBuffer, sizeof(char), TAM_BUFFER, f);
+          if(-1 == readSize){
+            msgSize = fillBufferWithErrMsg(UNKNOWN,"UNKNOWN", buffer);
+            EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));
+            logError(UNKNOWN, "line 327");
+            exit(EXIT_FAILURE);
+          }
+
+          msgSize = fillBufferWithDataMsg(blockNumber,dataBuffer,readSize,buffer);
+          EXIT_ON_WRONG_VALUE(TRUE,"Error on sending data block",(send(s, buffer, msgSize, 0) != msgSize));
+
+sprintf(tag, "%d   %d\n",__LINE__,buffer[1]);
+logIssue(tag);
+
+          logs(requestmsg.fileName,hostName, hostIp, "TCP", port, blockNumber,LOG_NORMAL);
+
+        //wait for ack 
+          msgSize = reciveMsg(s,buffer);
+
+sprintf(tag, "%d   %d\n",__LINE__,buffer[1]);
+logIssue(tag);
+
+          switch(getMessageTypeWithBuffer(buffer)){
+            case ACK_TYPE: 
+              ackmsg = fillAckWithBuffer(buffer);
+              //check if ack its correct; if not an error is send
+              if( blockNumber != ackmsg.blockNumber ){
+                msgSize = fillBufferWithErrMsg(UNKNOWN,"UNKNOWN", buffer);
+                EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));
+                logError(UNKNOWN, "line 345");
+                exit(EXIT_FAILURE);
+              }
+              blockNumber += 1;
+            break;
+            case ERR_TYPE: 
+              errmsg = fillErrWithBuffer(buffer);
+              logError(errmsg.errorCode, errmsg.errorMsg);
+              exit(EXIT_FAILURE);
+            break;
+            default:
+              //logError(ILLEGAL_OPERATION, "ILLEGAL_OPERATION");
+              //CAMBIAR POR EL DE ARRIBA AL TERMINAR
+              logError(buffer[1], "ILLEGAL_OPERATION");
+              msgSize = fillBufferWithErrMsg(ILLEGAL_OPERATION,"ILLEGAL_OPERATION", buffer);
+              EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));
+              exit(EXIT_FAILURE);
+            break; 
+          }
+
+        //check if the file has ended
+        if(feof(f))
+          endSesion = TRUE;
+      }
+
+  }else{
+
+  }
+
+    /* Now, shutdown the connection for further sends.
+    * This will cause the server to receive an end-of-file
+    * condition after it has received all the requests that
+    * have just been sent, indicating that we will not be
+    * sending any further requests.
+    */
+    EXIT_ON_WRONG_VALUE(-1,"unable to shutdown socket",shutdown(s, 1));
+
+  fclose(f);
+  close(s);
+  logs(requestmsg.fileName,hostName, hostIp, "TCP", port, 0, LOG_END);
+}
+
+/*
 void tcpServer(int s, struct sockaddr_in clientaddr_in){
 
   char hostName[HOSTNAME_SIZE];
@@ -329,12 +462,15 @@ void tcpServer(int s, struct sockaddr_in clientaddr_in){
           exit(EXIT_FAILURE);
         break;
         default:
-          fillBufferWithErrMsg(/*errmsg.errorCode*/ILLEGAL_OPERATION, "ILLEGAL_OPERATION", buffer);
+          fillBufferWithErrMsg(ILLEGAL_OPERATION, "ILLEGAL_OPERATION", buffer);
           EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, TAM_BUFFER, 0) != TAM_BUFFER));
           logError(ILLEGAL_OPERATION, "ILLEGAL_OPERATION");
           exit(EXIT_FAILURE);
         break; 
       }
+
+      if(feof(f))
+        endTcpRead = TRUE;
 
     }
 
@@ -347,7 +483,7 @@ void tcpServer(int s, struct sockaddr_in clientaddr_in){
   fclose(f);
   close(s);
   logs(requestMsg.fileName,hostName, hostIp, "TCP", ntohs(clientaddr_in.sin_port), 0, LOG_END);
-}
+}*/
 
 void udpServer(int s, char * buffer, struct sockaddr_in clientaddr_in){
   fprintf(stderr, "%s\n","UDP SERVER");
@@ -396,7 +532,7 @@ void logError(int errorcode, char * errorMsg){
 	char toLog[LOG_MESSAGE_SIZE];
 	FILE*logFile = fopen(SERVER_LOG_PATH,"a+");
 
-	sprintf(toLog,"\n[%s][Connection][ERROR: %d %s]",getDateAndTime(),errorcode,errorMsg);
+	sprintf(toLog,"\n[%s][ERROR: %d %s]",getDateAndTime(),errorcode,errorMsg);
 	fprintf(stderr,"%s",toLog);
 	fprintf(logFile, "%s",toLog);
 

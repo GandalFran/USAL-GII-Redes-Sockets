@@ -1,9 +1,0 @@
-
-[2018-11-27 22:43:3][Host: 192.168.70.1][Port:54155][File     f1.txt][SUCCED]
-[2018-11-27 22:43:3][Host: 192.168.70.1][Port:54155][File     f1.txt][SUCCED]
-[2018-11-27 22:43:3][Host: 192.168.70.1][Port:54155][File     f1.txt][SUCCED]
-[2018-11-27 22:43:3][Host: 192.168.70.1][Port:54155][File     f1.txt][SUCCED]
-[2018-11-27 22:43:3][Host: 192.168.70.1][Port:54155][File     f1.txt][SUCCED]
-[2018-11-27 22:43:3][Host: 192.168.70.1][Port:54155][File     f1.txt][SUCCED]
-[2018-11-27 22:43:3][Host: 192.168.70.1][Port:54155][File     f1.txt][SUCCED]
-[2018-11-27 22:43:3][Host: 192.168.70.1][Port:54155][ERROR: 0 ILLEGAL_OPERATION]

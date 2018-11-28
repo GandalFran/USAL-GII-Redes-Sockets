@@ -8,9 +8,9 @@ LIBS= -lsocket -lnsl
 
 all: server client removeCompilationWaste
 
-runAll: server client removeCompilationWaste
+run: server client removeCompilationWaste
 		./server &
-		./client 192.168.70.1 TCP r f1.txt &
+		./client 192.168.70.1 TCP r utils/bible.txt &
 
 runServer: server removeCompilationWaste
 		clear
@@ -18,14 +18,14 @@ runServer: server removeCompilationWaste
 
 runClient: client removeCompilationWaste
 		clear
-		./client 127.20.2.164 TCP r f1.txt
+		./client 127.20.2.164 TCP r bible.txt
 clean:
 	rm client
 	rm server
 	rm peticiones.log
 	rm *.txt
 	killall -9 server
-	echo "HOLA SOY UNA PRUEBA Y OJALA SALGA BIEN " > f1.txt
+	echo "HOLA SOY UNA PRUEBA Y OJALA SALGA BIEN" > f1.txt
 	clear
 
 removeCompilationWaste:

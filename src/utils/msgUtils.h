@@ -14,9 +14,11 @@
 #include<string.h>
 #include "utils.h"
 
+#define DATA_SIZE(size) ( (size) - 4)
+
 //TODO mirar cuales son los tamanos de estos y el codigo que corresopnde a octet
-#define MSG_FILE_NAME_SIZE 512
-#define MSG_MODE_SIZE 512
+#define MSG_FILE_NAME_SIZE 128
+#define MSG_MODE_SIZE 128
 #define MSG_DATA_SIZE 512
 #define MSG_ERROR_SIZE 512
 
@@ -24,7 +26,7 @@
 
 typedef char byte;
 
-typedef enum { READ=1,WRITE=2,DATA=3,ACK=4,ERR=5} headers;
+typedef enum { READ_TYPE=1,WRITE_TYPE=2,DATA_TYPE=3,ACK_TYPE=4,ERR_TYPE=5} headers;
 typedef enum { UNKNOWN=0, FILE_NOT_FOUND=1, DISK_FULL=3, ILLEGAL_OPERATION=4, FILE_ALREADY_EXISTS=6 } errorMsgCodes;
 
 typedef struct{
@@ -55,14 +57,15 @@ typedef struct{
 
 headers getMessageTypeWithBuffer(char * buffer);
 
+
 rwMsg fillReadMsgWithBuffer(char * buffer);
-dataMsg fillDataWithBuffer(char * buffer);
+dataMsg fillDataWithBuffer(size_t dataSize, char * buffer);
 ackMsg fillAckWithBuffer(char * buffer);
 errMsg fillErrWithBuffer(char * buffer);
 
-void fillBufferWithReadMsg(bool isRead,char * fileName, char * buffer);
-void fillBufferWithDataMsg(int blockNumber, char * data , char * buffer);
-void fillBufferWithAckMsg(int blockNumber, char * buffer);
-void fillBufferWithErrMsg(errorMsgCodes errorcode, char * errorMsg, char * buffer);
+int fillBufferWithReadMsg(bool isRead,char * fileName, char * buffer);
+int fillBufferWithDataMsg(int blockNumber, char * data, size_t dataSize , char * buffer);
+int fillBufferWithAckMsg(int blockNumber, char * buffer);
+int fillBufferWithErrMsg(errorMsgCodes errorcode, char * errorMsg, char * buffer);
 
 #endif

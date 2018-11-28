@@ -17,7 +17,7 @@
 #define SERVER_LOG_PATH "peticiones.log"
 
 #define PORT 8455
-#define TAM_BUFFER 600
+#define TAM_BUFFER 1024
 
 #define TRUE 1
 #define FALSE 0
