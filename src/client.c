@@ -154,37 +154,36 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 
 	//open the file to write
 	char destionationFile[30];
-	sprintf(destionationFile,"CLIENT%s",file);
-	f = fopen(destionationFile,"wb+");
+	sprintf(destionationFile,"CLIENT.txt");
+	EXIT_ON_WRONG_VALUE(NULL,"Error on opening file",f = fopen(destionationFile,"wb+"));
 
 	//bifurcate into read or write
 	if(isReadMode){
 
 		endSesion = FALSE;
 		while(!endSesion){
-fprintf(stderr, "1\n" );
 			//recive first one block
 			msgSize = reciveMsg(s,buffer);
-fprintf(stderr, "2\n" );
+			if(msgSize == 0){
+				endSesion = TRUE;
+				break;
+			}
+
 			//act according to type
 			switch(getMessageTypeWithBuffer(buffer)){
 				case DATA_TYPE:
 
-				fprintf(stderr, "3\n" );
 					datamsg = fillDataWithBuffer(msgSize,buffer);
 
-				fprintf(stderr, "4\n" );
 					//check if block number is the correct one
 					if(datamsg.blockNumber != blockNumber ){
 						msgSize = fillBufferWithErrMsg(UNKNOWN,"UNKNOWN", buffer);
 					    EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));
-					    logError(hostName,port,UNKNOWN, "UNKNOWN");
+					    logError(hostName,port,UNKNOWN, "UNKNOWNa");
 					    exit(EXIT_FAILURE);
 					}
 					//write the send data
-					fprintf(stderr, "6\n" );
-					writeResult = fwrite(datamsg.data,sizeof(char),DATA_SIZE(msgSize),f);
-					fprintf(stderr, "ADF\n" );
+					writeResult = fwrite(datamsg.data,sizeof(char),sizeof(datamsg.data),f);
 					if(-1 == writeResult){
 						msgSize = fillBufferWithErrMsg(DISK_FULL,"DISK_FULL", buffer);
 					    EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));
@@ -192,13 +191,12 @@ fprintf(stderr, "2\n" );
 					    exit(EXIT_FAILURE);
 					}
 					//check if the block is the last -- size less than 512 bytes
-					if(msgSize < MSG_DATA_SIZE)
+					if(sizeof(datamsg.data) < MSG_DATA_SIZE)
 						endSesion = TRUE;
 					//increment block number 
 					blockNumber += 1;
 				break;
 				case ERR_TYPE: 
-				fprintf(stderr, "3\n" );
 					errmsg = fillErrWithBuffer(buffer);
 		            logError(hostName,port,errmsg.errorCode, errmsg.errorMsg);
 		            exit(EXIT_FAILURE);
@@ -214,7 +212,6 @@ fprintf(stderr, "2\n" );
 			//send ack
 			msgSize = fillBufferWithAckMsg(datamsg.blockNumber, buffer);
 			EXIT_ON_WRONG_VALUE(TRUE,"Error on sending ack for block",(send(s, buffer, msgSize, 0) != msgSize));
-fprintf(stderr, "4\n" );
 			//log received data 
 			logc(hostName, port, file, datamsg.blockNumber, LOG_NORMAL);
 		}

@@ -329,16 +329,10 @@ char tag[300];
           msgSize = fillBufferWithDataMsg(blockNumber,dataBuffer,readSize,buffer);
           EXIT_ON_WRONG_VALUE(TRUE,"Error on sending data block",(send(s, buffer, msgSize, 0) != msgSize));
 
-sprintf(tag, "%d   %d\n",__LINE__,buffer[1]);
-logIssue(tag);
-
           logs(requestmsg.fileName,hostName, hostIp, "TCP", port, blockNumber,LOG_NORMAL);
 
         //wait for ack 
           msgSize = reciveMsg(s,buffer);
-
-sprintf(tag, "%d   %d\n",__LINE__,buffer[1]);
-logIssue(tag);
 
           switch(getMessageTypeWithBuffer(buffer)){
             case ACK_TYPE: 
