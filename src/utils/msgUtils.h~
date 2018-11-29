@@ -51,6 +51,7 @@ typedef struct{
 	uint16_t header;
 	uint16_t errorCode;
 	uint8_t errorMsg[MSG_ERROR_SIZE];
+	uint8_t tail;
 }errMsg;
 
 headers getMessageTypeWithBuffer(char * buffer);
