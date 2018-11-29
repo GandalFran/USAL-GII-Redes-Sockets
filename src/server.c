@@ -313,12 +313,12 @@ void tcpServer(int s, struct sockaddr_in clientaddr_in){
     exit(EXIT_FAILURE);
   }
 
-char tag[300];
   //obtain the request type and bifurcate 
   if(requestmsg.header == READ_TYPE){
       while(!endSesion){
         //send block 
-          readSize = fread(dataBuffer, sizeof(char), TAM_BUFFER, f);
+        memset(dataBuffer,0,MSG_DATA_SIZE);
+          readSize = fread(dataBuffer, sizeof(char), MSG_DATA_SIZE, f);
           if(-1 == readSize){
             msgSize = fillBufferWithErrMsg(UNKNOWN,"UNKNOWN", buffer);
             EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));

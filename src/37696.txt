@@ -1,3 +1,0 @@
-
-[2018-11-29 12:54:51][Host: 172.20.3.107][Port:37696][File utils/bible.txt][CONNECTION STARTED]
-[2018-11-29 12:54:51][Host: 172.20.3.107][Port:37696][ERROR: 0 ILLEc]

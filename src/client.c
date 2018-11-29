@@ -183,7 +183,7 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 					    exit(EXIT_FAILURE);
 					}
 					//write the send data
-					writeResult = fwrite(datamsg.data,sizeof(char),sizeof(datamsg.data),f);
+					writeResult = fwrite(datamsg.data,sizeof(char),strlen(datamsg.data),f);
 					if(-1 == writeResult){
 						msgSize = fillBufferWithErrMsg(DISK_FULL,"DISK_FULL", buffer);
 					    EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));

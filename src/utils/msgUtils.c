@@ -13,7 +13,9 @@
 #include <string.h>
 
 headers getMessageTypeWithBuffer(char * buffer){
-	return buffer[1];
+	uint16_t header;
+	memcpy(&header,&(buffer[0]),sizeof(uint16_t));
+	return header;
 }
 
 
@@ -23,7 +25,7 @@ rwMsg fillReadMsgWithBuffer(char * buffer){
 
 	memcpy(&(msg.header),buffer,sizeof(uint16_t));
 	strcpy(msg.fileName,&(buffer[2]));
-	strcpy(msg.characterMode,&(buffer[2 + sizeof(msg.fileName) + 1]));
+	strcpy(msg.characterMode,&(buffer[2 + strlen(msg.fileName) + 1]));
 
 	return msg;
 }
@@ -61,10 +63,11 @@ int fillBufferWithReadMsg(bool isRead,char * fileName, char * buffer){
 	memset(buffer,0,sizeof(buffer));
 
 	uint16_t header = isRead ? READ_TYPE : WRITE_TYPE;
-	memcpy(buffer,&header,sizeof(uint16_t));
-	memcpy(&(buffer[2]),fileName,sizeof(fileName));
 	char mode[] = OCTET_MODE;
-	memcpy(&(buffer[2 + sizeof(fileName) + 1]),mode,sizeof(mode));
+
+	memcpy(buffer,&header,sizeof(uint16_t));
+	memcpy(&(buffer[2]),fileName,strlen(fileName));
+	memcpy(&(buffer[2 + strlen(fileName) + 1]),mode,strlen(mode));
 
 	return (4 + sizeof(fileName) + sizeof(mode));
 }
@@ -74,9 +77,9 @@ int fillBufferWithDataMsg(int blockNumber, char * data, size_t dataSize,char * b
 	uint16_t header = DATA_TYPE;
 	memcpy(buffer,&header,sizeof(uint16_t));
 	memcpy(&(buffer[2]),&blockNumber,sizeof(uint16_t));
-	memcpy(&(buffer[4]),data,sizeof(data));
+	memcpy(&(buffer[4]),data,dataSize);
 
-	return 4 + sizeof(data);
+	return 5 + strlen(data);
 }
 int fillBufferWithAckMsg(int blockNumber, char * buffer){
 	memset(buffer,0,sizeof(buffer));
@@ -93,7 +96,7 @@ int fillBufferWithErrMsg(errorMsgCodes errorcode, char * errorMsg, char * buffer
 	uint16_t header = ERR_TYPE;
 	memcpy(buffer,&header,sizeof(uint16_t));
 	memcpy(&(buffer[2]),&errorcode,sizeof(uint16_t));
-	memcpy(&(buffer[4]),errorMsg,sizeof(errorMsg));
+	memcpy(&(buffer[4]),errorMsg,strlen(errorMsg));
 
 	return 5 + sizeof(errorMsg);
 }
