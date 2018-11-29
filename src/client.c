@@ -88,7 +88,7 @@ int reciveMsg(int s, char * buffer){
     logIssue("loop3");
 */
   	j = recv(s, buffer, TAM_BUFFER, 0);
-  	//if(j< TAM_BUFFER)
+  	if(j< TAM_BUFFER && j>0)
   		buffer[j] = '\0';
   	return j;
 }
@@ -112,7 +112,8 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 
 	FILE * f = NULL;
 	int blockNumber = 0;
-	int msgSize, writeResult;
+	int msgSize, writeResult, readSize;
+  	char dataBuffer[MSG_DATA_SIZE];
 
 	char buffer[TAM_BUFFER];
 
@@ -152,21 +153,31 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 	msgSize = fillBufferWithReadMsg(isReadMode,file, buffer);
 	EXIT_ON_WRONG_VALUE(TRUE,"Error on sending read/write request",(send(s, buffer, msgSize, 0) != msgSize));
 
-	//open the file to write
-	char destionationFile[30];
-	sprintf(destionationFile,"CLIENT.txt");
-	EXIT_ON_WRONG_VALUE(NULL,"Error on opening file",f = fopen(destionationFile,"wb+"));
+	//check if file exists
+	bool fileExists = (access( file, F_OK ) != -1) ? TRUE : FALSE;
 
 	//bifurcate into read or write
 	if(isReadMode){
 
-		endSesion = FALSE;
+		//open the file to write
+		char destionationFile[30];
+		sprintf(destionationFile,"CLIENT.txt");
+	    if(NULL == (f = fopen(destionationFile,"wb+"))){
+	        //if error send error msg 
+	        msgSize = fillBufferWithErrMsg(UNKNOWN,"UNKNOWN", buffer);
+	        EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error msg",(send(s, buffer, msgSize, 0) != msgSize));
+	        logError(hostName,port,UNKNOWN, file);
+	        exit(EXIT_FAILURE);
+	    }
+
 		while(!endSesion){
 			//recive first one block
 			msgSize = reciveMsg(s,buffer);
-			if(msgSize == 0){
-				endSesion = TRUE;
-				break;
+			if(msgSize < 0){
+				msgSize = fillBufferWithErrMsg(UNKNOWN,"UNKNOWN", buffer);
+				EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error msg",(send(s, buffer, msgSize, 0) != msgSize));
+				logError(hostName,port,UNKNOWN, "UNKNOWNa");
+				exit(EXIT_FAILURE);
 			}
 
 			//act according to type
@@ -218,7 +229,71 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 
 	}else{
 
+      //open the request file
+      if(NULL == (f = fopen(file,"rb"))){
+        //if error send error msg 
+        msgSize = fillBufferWithErrMsg(UNKNOWN,"UNKNOWN", buffer);
+        EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error msg",(send(s, buffer, msgSize, 0) != msgSize));
+        logError(hostName,port,UNKNOWN, file);
+        exit(EXIT_FAILURE);
+      }
 
+      while(!endSesion){
+         //wait for ack 
+          msgSize = reciveMsg(s,buffer);
+          if(msgSize < 0){
+            msgSize = fillBufferWithErrMsg(UNKNOWN,"UNKNOWN", buffer);
+            EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error msg",(send(s, buffer, msgSize, 0) != msgSize));
+            logError(hostName,port,UNKNOWN, "UNKNOWNa");
+            exit(EXIT_FAILURE);
+          }
+
+          switch(getMessageTypeWithBuffer(buffer)){
+            case ACK_TYPE: 
+              ackmsg = fillAckWithBuffer(buffer);
+              //check if ack its correct; if not an error is send
+              if( blockNumber != ackmsg.blockNumber ){
+                msgSize = fillBufferWithErrMsg(UNKNOWN,"UNKNOWN", buffer);
+                EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));
+                logError(hostName,port,UNKNOWN, "line 240");
+                exit(EXIT_FAILURE);
+              }
+              blockNumber += 1;
+            break;
+            case ERR_TYPE: 
+              errmsg = fillErrWithBuffer(buffer);
+              logError(hostName,port,errmsg.errorCode, errmsg.errorMsg);
+              exit(EXIT_FAILURE);
+            break;
+            default:
+              //logError(ILLEGAL_OPERATION, "ILLEGAL_OPERATION");
+              //CAMBIAR POR EL DE ARRIBA AL TERMINAR
+              logError(hostName,port,buffer[1], "ILLEGAL_OPERATION");
+              msgSize = fillBufferWithErrMsg(ILLEGAL_OPERATION,"ILLEGAL_OPERATION", buffer);
+              EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));
+              exit(EXIT_FAILURE);
+            break; 
+          }
+
+        //send block 
+        memset(dataBuffer,0,MSG_DATA_SIZE);
+        readSize = fread(dataBuffer, sizeof(char), MSG_DATA_SIZE, f);
+        if(-1 == readSize){
+          msgSize = fillBufferWithErrMsg(UNKNOWN,"UNKNOWN", buffer);
+          EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));
+          logError(hostName,port,UNKNOWN, "line 267");
+          exit(EXIT_FAILURE);
+        }
+
+        msgSize = fillBufferWithDataMsg(blockNumber,dataBuffer,readSize,buffer);
+        EXIT_ON_WRONG_VALUE(TRUE,"Error on sending data block",(send(s, buffer, msgSize, 0) != msgSize));
+
+        logc(hostName,port, file, blockNumber,LOG_NORMAL);
+
+        //check if the file has ended
+        if(feof(f))
+          endSesion = TRUE;
+      }
 	}
 
 

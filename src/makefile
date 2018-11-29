@@ -10,7 +10,7 @@ all: server client removeCompilationWaste
 
 run: server client removeCompilationWaste
 		./server &
-		./client 192.168.70.1 TCP r utils/bible.txt &
+		./client 192.168.70.1 TCP w utils/bible.txt &
 
 runServer: server removeCompilationWaste
 		clear

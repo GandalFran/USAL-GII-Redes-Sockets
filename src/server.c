@@ -273,6 +273,7 @@ void tcpServer(int s, struct sockaddr_in clientaddr_in){
 
   FILE * f = NULL;
   int blockNumber = 0;
+  int writeResult = 0;
   char dataBuffer[MSG_DATA_SIZE];
 
   int msgSize, readSize;
@@ -294,30 +295,49 @@ void tcpServer(int s, struct sockaddr_in clientaddr_in){
 
   //read client request to know if is required read or write
   msgSize = reciveMsg(s,buffer);
+  if(msgSize < 0){
+    msgSize = fillBufferWithErrMsg(UNKNOWN,"UNKNOWN", buffer);
+    EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error msg",(send(s, buffer, msgSize, 0) != msgSize));
+    logError(UNKNOWN, "UNKNOWNa");
+    exit(EXIT_FAILURE);
+  }
+
   requestmsg = fillReadMsgWithBuffer(buffer);
 
   //if the msg isnt a request send error 
   if(READ_TYPE != requestmsg.header && WRITE_TYPE != requestmsg.header){
     msgSize = fillBufferWithErrMsg(ILLEGAL_OPERATION,"ILLEGAL_OPERATION", buffer);
     EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));
-    logError(FILE_NOT_FOUND, "FILE_NOT_FOUND");
-    exit(EXIT_FAILURE);
-  }
-  
-  //open the request file and check if exists 
-  if(NULL == (f = fopen(requestmsg.fileName,"rb"))){
-    //if error send error msg 
-    msgSize = fillBufferWithErrMsg(FILE_NOT_FOUND,"FILE_NOT_FOUND", buffer);
-    EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));
-    logError(FILE_NOT_FOUND, requestmsg.fileName);
+    logError(ILLEGAL_OPERATION, "ILLEGAL_OPERATION");
     exit(EXIT_FAILURE);
   }
 
+  //check if file exists
+  bool fileExists = (access( requestmsg.fileName, F_OK ) != -1) ? TRUE : FALSE;
+
   //obtain the request type and bifurcate 
   if(requestmsg.header == READ_TYPE){
+
+      //send error if file not found
+      if(!fileExists){
+        msgSize = fillBufferWithErrMsg(FILE_NOT_FOUND,"FILE_NOT_FOUND", buffer);
+        EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));
+        logError(FILE_NOT_FOUND, requestmsg.fileName);
+        exit(EXIT_FAILURE);
+      }
+
+      //open the request file
+      if(NULL == (f = fopen(requestmsg.fileName,"rb"))){
+        //if error send error msg 
+        msgSize = fillBufferWithErrMsg(UNKNOWN,"UNKNOWN", buffer);
+        EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));
+        logError(UNKNOWN, requestmsg.fileName);
+        exit(EXIT_FAILURE);
+      }
+
       while(!endSesion){
         //send block 
-        memset(dataBuffer,0,MSG_DATA_SIZE);
+          memset(dataBuffer,0,MSG_DATA_SIZE);
           readSize = fread(dataBuffer, sizeof(char), MSG_DATA_SIZE, f);
           if(-1 == readSize){
             msgSize = fillBufferWithErrMsg(UNKNOWN,"UNKNOWN", buffer);
@@ -333,6 +353,12 @@ void tcpServer(int s, struct sockaddr_in clientaddr_in){
 
         //wait for ack 
           msgSize = reciveMsg(s,buffer);
+          if(msgSize < 0){
+            msgSize = fillBufferWithErrMsg(UNKNOWN,"UNKNOWN", buffer);
+            EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error msg",(send(s, buffer, msgSize, 0) != msgSize));
+            logError(UNKNOWN, "UNKNOWNa");
+            exit(EXIT_FAILURE);
+          }
 
           switch(getMessageTypeWithBuffer(buffer)){
             case ACK_TYPE: 
@@ -367,7 +393,88 @@ void tcpServer(int s, struct sockaddr_in clientaddr_in){
       }
 
   }else{
+      //send error if file found
+      /*if(fileExists){
+        msgSize = fillBufferWithErrMsg(FILE_ALREADY_EXISTS,"FILE_ALREADY_EXISTS", buffer);
+        EXIT_ON_WRONG_VALUE(TRUE,"Error becuase file exists",(send(s, buffer, msgSize, 0) != msgSize));
+        logError(FILE_ALREADY_EXISTS, requestmsg.fileName);
+        exit(EXIT_FAILURE);
+      }*/
 
+      //open the request file
+      char destionationFile[30];
+      sprintf(destionationFile,"SERVER.txt");
+      if(NULL == (f = fopen(destionationFile,"wb+"))){
+        //if error send error msg 
+        msgSize = fillBufferWithErrMsg(UNKNOWN,"UNKNOWN", buffer);
+        EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));
+        logError(UNKNOWN, requestmsg.fileName);
+        exit(EXIT_FAILURE);
+      }
+
+      //send ack and increment block
+      msgSize = fillBufferWithAckMsg(datamsg.blockNumber, buffer);
+      EXIT_ON_WRONG_VALUE(TRUE,"Error on sending ack for block",(send(s, buffer, msgSize, 0) != msgSize));
+      blockNumber += 1;
+
+    while(!endSesion){
+
+      //recive block
+      msgSize = reciveMsg(s,buffer);
+      if(msgSize < 0){
+        msgSize = fillBufferWithErrMsg(UNKNOWN,"UNKNOWN", buffer);
+        EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error msg",(send(s, buffer, msgSize, 0) != msgSize));
+        logError(UNKNOWN, "UNKNOWNa");
+        exit(EXIT_FAILURE);
+      }
+
+      //act according to type
+      switch(getMessageTypeWithBuffer(buffer)){
+        case DATA_TYPE:
+
+          datamsg = fillDataWithBuffer(msgSize,buffer);
+
+          //check if block number is the correct one
+          if(datamsg.blockNumber != blockNumber ){
+            msgSize = fillBufferWithErrMsg(UNKNOWN,"UNKNOWN", buffer);
+              EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));
+              logError(UNKNOWN, "UNKNOWN asdf");
+              exit(EXIT_FAILURE);
+          }
+          //write the send data
+          writeResult = fwrite(datamsg.data,sizeof(char),strlen(datamsg.data),f);
+          if(-1 == writeResult){
+            msgSize = fillBufferWithErrMsg(DISK_FULL,"DISK_FULL", buffer);
+              EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));
+              logError(DISK_FULL, "DISK_FULL");
+              exit(EXIT_FAILURE);
+          }
+          //check if the block is the last -- size less than 512 bytes
+          if(sizeof(datamsg.data) < MSG_DATA_SIZE)
+            endSesion = TRUE;
+          //increment block number 
+          blockNumber += 1;
+        break;
+        case ERR_TYPE: 
+          errmsg = fillErrWithBuffer(buffer);
+                logError(errmsg.errorCode, errmsg.errorMsg);
+                exit(EXIT_FAILURE);
+        break;
+        default:
+              msgSize = fillBufferWithErrMsg(ILLEGAL_OPERATION,"ILLEGAL_OPERATION", buffer);
+                  EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));
+                  logError(ILLEGAL_OPERATION, &buffer[4]);
+                  exit(EXIT_FAILURE);
+        break; 
+      }
+
+      //send ack
+      msgSize = fillBufferWithAckMsg(datamsg.blockNumber, buffer);
+      EXIT_ON_WRONG_VALUE(TRUE,"Error on sending ack for block",(send(s, buffer, msgSize, 0) != msgSize));
+
+      //log received data 
+      logs(requestmsg.fileName,hostName, hostIp, "TCP", port, blockNumber, LOG_NORMAL);
+    }
   }
 
     /* Now, shutdown the connection for further sends.
