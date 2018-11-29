@@ -24,8 +24,8 @@
 
 #define TCP_ARG "TCP"
 #define UDP_ARG "UDP"
-#define READ_ARG "r"
-#define WRITE_ARG "w"
+#define READ_ARG "l"
+#define WRITE_ARG "r"
 
 #define EXIT_ON_WRONG_VALUE(wrongValue, errorMsg, returnValue)                          \
 do{                                              		    	                        \
@@ -42,7 +42,7 @@ do{                                              		    	                        
 #define LOG_END 2
 
 void logError(char * hostName, int port, int errorCode, char * errormsg);
-void logc(char * hostName, int port, char * fileName, int block, int mode);
+void logc(char * hostName, int port, char * fileName, int block, int mode, bool operation);
 
 void tcpClient(bool isReadMode, char * hostName, char * file);
 void udpClient(bool isReadMode, char * hostName, char * file);
@@ -147,7 +147,7 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 
 	//log the connection
 	port = ntohs(myaddr_in.sin_port);
-	logc(hostName, port, file, 0, LOG_START);
+	logc(hostName, port, file, 0, LOG_START,isReadMode);
 
 	//send request to start protocol
 	msgSize = fillBufferWithReadMsg(isReadMode,file, buffer);
@@ -224,7 +224,7 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 			msgSize = fillBufferWithAckMsg(datamsg.blockNumber, buffer);
 			EXIT_ON_WRONG_VALUE(TRUE,"Error on sending ack for block",(send(s, buffer, msgSize, 0) != msgSize));
 			//log received data 
-			logc(hostName, port, file, datamsg.blockNumber, LOG_NORMAL);
+			logc(hostName, port, file, datamsg.blockNumber, LOG_NORMAL,isReadMode);
 		}
 
 	}else{
@@ -288,7 +288,7 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
         msgSize = fillBufferWithDataMsg(blockNumber,dataBuffer,readSize,buffer);
         EXIT_ON_WRONG_VALUE(TRUE,"Error on sending data block",(send(s, buffer, msgSize, 0) != msgSize));
 
-        logc(hostName,port, file, blockNumber,LOG_NORMAL);
+        logc(hostName,port, file, blockNumber,LOG_NORMAL,isReadMode);
 
         //check if the file has ended
         if(feof(f))
@@ -298,7 +298,7 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 
 
 	fclose(f);
-	logc(hostName, port, file, 0, LOG_END);
+	logc(hostName, port, file, 0, LOG_END,isReadMode);
 
 	/* Now, shutdown the connection for further sends.
 	 * This will cause the server to receive an end-of-file
@@ -329,7 +329,7 @@ const char * getDateAndTime(){
 	return timeString;
 }
 
-void logc(char * hostName, int port, char * fileName, int block, int mode){
+void logc(char * hostName, int port, char * fileName, int block, int mode,bool operation){
   char toLog[LOG_MESSAGE_SIZE];
   char path[CLIENT_FILE_PATH_SIZE];
 
@@ -337,7 +337,14 @@ void logc(char * hostName, int port, char * fileName, int block, int mode){
   FILE*logFile = fopen(path,"a+");
 
   switch(mode){
-	case LOG_START: sprintf(toLog,"\n[%s][Host: %s][Port:%d][File %10s][CONNECTION STARTED]",getDateAndTime(),hostName, port,fileName); break;
+	case LOG_START:
+          if(operation){
+              sprintf(toLog,"\nSTARTING PROCESS OF READING\n[%s][Host: %s][Port:%d][File %10s][CONNECTION STARTED]",getDateAndTime(),hostName, port,fileName);
+          }else{
+              sprintf(toLog,"\nSTARTING PROCESS OF WRITING\n[%s][Host: %s][Port:%d][File %10s][CONNECTION STARTED]",getDateAndTime(),hostName, port,fileName);
+          }
+          
+          break;
   	case LOG_NORMAL: sprintf(toLog,"\n[%s][Host: %s][Port:%d][File %10s][Send block:%d]",getDateAndTime(),hostName, port,fileName,block); break;
   	case LOG_END: sprintf(toLog,"\n[%s][Host: %s][Port:%d][File %10s][SUCCED]",getDateAndTime(),hostName, port,fileName); break;
   }
@@ -350,12 +357,31 @@ void logc(char * hostName, int port, char * fileName, int block, int mode){
 
 void logError(char * hostName, int port, int errorCode, char * errormsg){
 	char toLog[LOG_MESSAGE_SIZE];
+    char error[ENUMERATION_SIZE];
 	char path[CLIENT_FILE_PATH_SIZE];
 
     sprintf(path,"%d.txt",port);
     FILE*logFile = fopen(path,"a+");
+    
+    switch (errorCode) {
+        case 0:
+            strcpy(error,"UNKNOWN");
+            break;
+        case 1:
+            strcpy(error,"FILE_NOT_FOUND");
+            break;
+        case 3:
+            strcpy(error,"DISK_FULL");
+            break;
+        case 4:
+            strcpy(error,"ILEGAL_OPERATION");
+            break;
+        case 6:
+            strcpy(error,"FILE_ALREADY_EXISTS");
+            break;
+    }
 
-	sprintf(toLog,"\n[%s][Host: %s][Port:%d][ERROR: %d %s]",getDateAndTime(),hostName,port,errorCode, errormsg);
+	sprintf(toLog,"\n[%s][Host: %s][Port:%d][ERROR: %s %s]",getDateAndTime(),hostName,port,error, errormsg);
 	fprintf(stderr,"%s",toLog);
 	fprintf(logFile, "%s",toLog);
 

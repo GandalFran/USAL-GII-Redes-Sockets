@@ -621,19 +621,38 @@ const char * getDateAndTime(){
 	return timeString;
 }
 
-void logIssue(char * asdf){
+void logIssue(char * issue){
   char toLog[LOG_MESSAGE_SIZE];
   FILE*logFile = fopen(SERVER_LOG_PATH,"a+");
-  sprintf(toLog,"\n[%s][ISSUE][%s]",getDateAndTime(),asdf);
+  sprintf(toLog,"\n[%s][ISSUE][%s]",getDateAndTime(),issue);
   fprintf(logFile, "%s",toLog);
   fclose(logFile);
 }
 
 void logError(int errorcode, char * errorMsg){
 	char toLog[LOG_MESSAGE_SIZE];
+    char error[ENUMERATION_SIZE];
 	FILE*logFile = fopen(SERVER_LOG_PATH,"a+");
+    
+    switch (errorcode) {
+        case 0:
+            strcpy(error,"UNKNOWN");
+            break;
+        case 1:
+            strcpy(error,"FILE_NOT_FOUND");
+            break;
+        case 3:
+            strcpy(error,"DISK_FULL");
+            break;
+        case 4:
+            strcpy(error,"ILEGAL_OPERATION");
+            break;
+        case 6:
+            strcpy(error,"FILE_ALREADY_EXISTS");
+            break;
+    }
 
-	sprintf(toLog,"\n[%s][ERROR: %d %s]",getDateAndTime(),errorcode,errorMsg);
+	sprintf(toLog,"\n[%s][ERROR: %s %s]",getDateAndTime(),error,errorMsg);
 	fprintf(stderr,"%s",toLog);
 	fprintf(logFile, "%s",toLog);
 
