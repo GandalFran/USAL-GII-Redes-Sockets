@@ -15,13 +15,13 @@
 #include<arpa/inet.h>
 #include "utils.h"
 
-#define DATA_SIZE(size) ( (size) - 4)
+#define DATA_SIZE(size) ((size) - 5)
 
 //TODO mirar cuales son los tamanos de estos y el codigo que corresopnde a octet
-#define MSG_FILE_NAME_SIZE 128
+#define MSG_FILE_NAME_SIZE 30
 #define MSG_MODE_SIZE 128
 #define MSG_DATA_SIZE 512
-#define MSG_ERROR_SIZE 512
+#define MSG_ERROR_SIZE 128
 
 #define OCTET_MODE "Octet"
 

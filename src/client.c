@@ -165,7 +165,7 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 
 		//open the file to write
 		char destionationFile[30];
-		sprintf(destionationFile,"CLIENT.mp4");
+		sprintf(destionationFile,"log/%s",file);
 	    if(NULL == (f = fopen(destionationFile,"wb"))){
 	        //if error send error msg 
         	sprintf(tag,"client couln't open %s" ,file);
@@ -198,7 +198,7 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 					    exit(EXIT_FAILURE);
 					}
 					//write the send data
-					writeResult = fwrite(datamsg.data,sizeof(char),msgSize-5,f);
+					writeResult = fwrite(datamsg.data,sizeof(char),DATA_SIZE(msgSize),f);
 					if(-1 == writeResult){
 						sprintf(tag,"error writing the file %s" ,file);
 						msgSize = fillBufferWithErrMsg(DISK_FULL,tag, buffer);
@@ -207,7 +207,7 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 					    exit(EXIT_FAILURE);
 					}
 					//check if the block is the last -- size less than 512 bytes
-					if((msgSize-5) < MSG_DATA_SIZE)
+					if(DATA_SIZE(msgSize) < MSG_DATA_SIZE)
 						endSesion = TRUE;
 					//increment block number 
 					blockNumber += 1;
@@ -342,7 +342,7 @@ void logc(char * hostName, int port, char * fileName, int block, int mode){
   char toLog[LOG_MESSAGE_SIZE];
   char path[CLIENT_FILE_PATH_SIZE];
 
-  sprintf(path,"%d.txt",port);
+  sprintf(path,"log/%d.txt",port);
   FILE*logFile = fopen(path,"a+");
 
   switch(mode){
@@ -364,7 +364,7 @@ void logError(char * hostName, int port, int errorCode, char * errormsg){
     char error[ENUMERATION_SIZE];
 	char path[CLIENT_FILE_PATH_SIZE];
 
-    sprintf(path,"%d.txt",port);
+    sprintf(path,"log/%d.txt",port);
     FILE*logFile = fopen(path,"a+");
     
     switch (errorCode) {

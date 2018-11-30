@@ -412,8 +412,8 @@ void tcpServer(int s, struct sockaddr_in clientaddr_in){
       }
 
       //open the request file
-      char destionationFile[30];
-      sprintf(destionationFile,"SERVER.txt");
+      char destionationFile[200];
+      sprintf(destionationFile,"log/%s",requestmsg.fileName);
       if(NULL == (f = fopen(destionationFile,"wb+"))){
         //if error send error msg
         sprintf(tag,"error opening the file %s" ,requestmsg.fileName);
@@ -453,7 +453,7 @@ void tcpServer(int s, struct sockaddr_in clientaddr_in){
               exit(EXIT_FAILURE);
           }
           //write the send data
-          writeResult = fwrite(datamsg.data,sizeof(char),strlen(datamsg.data),f);
+          writeResult = fwrite(datamsg.data,sizeof(char),DATA_SIZE(msgSize),f);
           if(-1 == writeResult){
             sprintf(tag,"error writing the file %s" ,requestmsg.fileName);
             msgSize = fillBufferWithErrMsg(DISK_FULL,tag, buffer);
@@ -462,7 +462,7 @@ void tcpServer(int s, struct sockaddr_in clientaddr_in){
               exit(EXIT_FAILURE);
           }
           //check if the block is the last -- size less than 512 bytes
-          if(sizeof(datamsg.data) < MSG_DATA_SIZE)
+          if(DATA_SIZE(msgSize) < MSG_DATA_SIZE)
             endSesion = TRUE;
           //increment block number 
           blockNumber += 1;
@@ -585,8 +585,8 @@ void logs(char * file, char * host, char * ip, char * protocol, int clientPort, 
   switch(mode){
     case LOG_START_READ: sprintf(toLog,"\n[%s][Host: %s][IP:%s][Protocol:%s][Port:%d][CONNECTION STARTED][READ MODE]",getDateAndTime(),host, ip, protocol, clientPort); break;
     case LOG_START_WRITE: sprintf(toLog,"\n[%s][Host: %s][IP:%s][Protocol:%s][Port:%d][CONNECTION STARTED][WRITE MODE]",getDateAndTime(),host, ip, protocol, clientPort); break;
-    case LOG_READ: sprintf(toLog,"\n[%s][Host: %s][IP:%s][Protocol:%s][Port:%d][File %10s][Send block:%d]",getDateAndTime(),host, ip, protocol, clientPort,file,blockNumber); break;
-    case LOG_WRITE: sprintf(toLog,"\n[%s][Host: %s][IP:%s][Protocol:%s][Port:%d][File %10s][Recived block:%d]",getDateAndTime(),host, ip, protocol, clientPort,file,blockNumber); break;
+    case LOG_READ: sprintf(toLog,"\n[%s][Host: %s][IP:%s][Protocol:%s][Port:%d][File %s][Send block:%d]",getDateAndTime(),host, ip, protocol, clientPort,file,blockNumber); break;
+    case LOG_WRITE: sprintf(toLog,"\n[%s][Host: %s][IP:%s][Protocol:%s][Port:%d][File %s][Recived block:%d]",getDateAndTime(),host, ip, protocol, clientPort,file,blockNumber); break;
     case LOG_END: sprintf(toLog,"\n[%s][Host: %s][IP:%s][Protocol:%s][Port:%d][File %10s][SUCCED]",getDateAndTime(),host, ip, protocol, clientPort,file); break;
   }
 

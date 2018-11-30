@@ -15,7 +15,7 @@
 #define TIME_STRING_SIZE 100
 #define LOG_MESSAGE_SIZE 1000
 #define ENUMERATION_SIZE 25
-#define SERVER_LOG_PATH "peticiones.log"
+#define SERVER_LOG_PATH "log/peticiones.log"
 
 #define PORT 8455
 #define TAM_BUFFER 1024

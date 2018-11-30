@@ -10,7 +10,7 @@ all: server client removeCompilationWaste
 
 run: server client removeCompilationWaste
 		./server &
-		./client 192.168.70.1 TCP r test.mp4 &
+		./client 192.168.70.1 TCP r bible.txt &
 
 runServer: server removeCompilationWaste
 		clear
@@ -22,8 +22,7 @@ runClient: client removeCompilationWaste
 clean:
 	rm client
 	rm server
-	rm peticiones.log
-	rm *.txt
+	rm log/*
 	killall -9 server
 	clear
 
