@@ -358,7 +358,7 @@ void tcpServer(int s, struct sockaddr_in clientaddr_in){
           msgSize = fillBufferWithDataMsg(blockNumber,dataBuffer,readSize,buffer);
           EXIT_ON_WRONG_VALUE(TRUE,"Error on sending data block",(send(s, buffer, msgSize, 0) != msgSize));
 
-          logs(requestmsg.fileName,hostName, hostIp, "TCP", port, blockNumber,LOG_READ);
+          //logs(requestmsg.fileName,hostName, hostIp, "TCP", port, blockNumber,LOG_READ);
 
         //wait for ack 
           msgSize = reciveMsg(s,buffer);
@@ -403,13 +403,13 @@ void tcpServer(int s, struct sockaddr_in clientaddr_in){
 
   }else{
       //send error if file found
-      if(fileExists){
+    /* if(fileExists){
         sprintf(tag,"the requested file alerady exists: %s" ,requestmsg.fileName);
         msgSize = fillBufferWithErrMsg(FILE_ALREADY_EXISTS,tag, buffer);
         EXIT_ON_WRONG_VALUE(TRUE,"Error becuase file exists",(send(s, buffer, msgSize, 0) != msgSize));
         logError(FILE_ALREADY_EXISTS, tag);
         exit(EXIT_FAILURE);
-      }
+      }*/
 
       //open the request file
       char destionationFile[200];
@@ -487,7 +487,7 @@ void tcpServer(int s, struct sockaddr_in clientaddr_in){
       EXIT_ON_WRONG_VALUE(TRUE,"Error on sending ack for block",(send(s, buffer, msgSize, 0) != msgSize));
 
       //log received data 
-      logs(requestmsg.fileName,hostName, hostIp, "TCP", port, blockNumber, LOG_WRITE);
+      //logs(requestmsg.fileName,hostName, hostIp, "TCP", port, blockNumber, LOG_WRITE);
     }
   }
 
