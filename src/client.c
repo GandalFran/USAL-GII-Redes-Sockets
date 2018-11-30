@@ -98,6 +98,7 @@ int reciveMsg(int s, char * buffer){
 
 void tcpClient(bool isReadMode, char * hostName, char * file){
 	char tag[1000];
+	char eTag[100];
 
     int s, addrlen, errcode;				
     struct addrinfo hints, *res;
@@ -198,7 +199,7 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 					    exit(EXIT_FAILURE);
 					}
 					//write the send data
-					writeResult = fwrite(datamsg.data,sizeof(char),DATA_SIZE(msgSize),f);
+					writeResult = fwrite(datamsg.data,1,DATA_SIZE(msgSize),f);
 					if(-1 == writeResult){
 						sprintf(tag,"error writing the file %s" ,file);
 						msgSize = fillBufferWithErrMsg(DISK_FULL,tag, buffer);
@@ -206,6 +207,7 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 					    logError(hostName,port,DISK_FULL, tag);
 					    exit(EXIT_FAILURE);
 					}
+
 					//check if the block is the last -- size less than 512 bytes
 					if(DATA_SIZE(msgSize) < MSG_DATA_SIZE)
 						endSesion = TRUE;
@@ -285,7 +287,7 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 
         //send block 
         memset(dataBuffer,0,MSG_DATA_SIZE);
-        readSize = fread(dataBuffer, sizeof(char), MSG_DATA_SIZE, f);
+        readSize = fread(dataBuffer, 1, MSG_DATA_SIZE, f);
         if(-1 == readSize){
           sprintf(tag,"error reading the file %s" ,file);
           msgSize = fillBufferWithErrMsg(UNKNOWN,tag, buffer);
@@ -346,11 +348,11 @@ void logc(char * hostName, int port, char * fileName, int block, int mode){
   FILE*logFile = fopen(path,"a+");
 
   switch(mode){
-	case LOG_START_READ: sprintf(toLog,"\n[%s][Host: %s][Port:%d][File %10s][CONNECTION STARTED][READ MODE]",getDateAndTime(),hostName, port,fileName); break;
-    case LOG_START_WRITE: sprintf(toLog,"\n[%s][Host: %s][Port:%d][File %10s][CONNECTION STARTED][WRITE MODE]",getDateAndTime(),hostName, port,fileName); break;
-  	case LOG_READ: sprintf(toLog,"\n[%s][Host: %s][Port:%d][File %10s][Recived block:%d]",getDateAndTime(),hostName, port,fileName,block); break;
-  	case LOG_WRITE: sprintf(toLog,"\n[%s][Host: %s][Port:%d][File %10s][Send block:%d]",getDateAndTime(),hostName, port,fileName,block); break;
-  	case LOG_END: sprintf(toLog,"\n[%s][Host: %s][Port:%d][File %10s][SUCCED]",getDateAndTime(),hostName, port,fileName); break;
+	case LOG_START_READ: sprintf(toLog,"\n[%s][Host: %s][Port:%d][File %s][CONNECTION STARTED][READ MODE]",getDateAndTime(),hostName, port,fileName); break;
+    case LOG_START_WRITE: sprintf(toLog,"\n[%s][Host: %s][Port:%d][File %s][CONNECTION STARTED][WRITE MODE]",getDateAndTime(),hostName, port,fileName); break;
+  	case LOG_READ: sprintf(toLog,"\n[%s][Host: %s][Port:%d][File %s][Recived block:%d]",getDateAndTime(),hostName, port,fileName,block); break;
+  	case LOG_WRITE: sprintf(toLog,"\n[%s][Host: %s][Port:%d][File %s][Send block:%d]",getDateAndTime(),hostName, port,fileName,block); break;
+  	case LOG_END: sprintf(toLog,"\n[%s][Host: %s][Port:%d][File %s][SUCCED]",getDateAndTime(),hostName, port,fileName); break;
   }
 
   fprintf(stderr,"%s",toLog);

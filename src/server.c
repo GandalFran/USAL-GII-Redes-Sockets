@@ -346,7 +346,7 @@ void tcpServer(int s, struct sockaddr_in clientaddr_in){
       while(!endSesion){
         //send block 
           memset(dataBuffer,0,MSG_DATA_SIZE);
-          readSize = fread(dataBuffer, sizeof(char), MSG_DATA_SIZE, f);
+          readSize = fread(dataBuffer, 1, MSG_DATA_SIZE, f);
           if(-1 == readSize){
             sprintf(tag,"error reading the file %s" ,requestmsg.fileName);
             msgSize = fillBufferWithErrMsg(UNKNOWN,tag, buffer);
@@ -453,7 +453,7 @@ void tcpServer(int s, struct sockaddr_in clientaddr_in){
               exit(EXIT_FAILURE);
           }
           //write the send data
-          writeResult = fwrite(datamsg.data,sizeof(char),DATA_SIZE(msgSize),f);
+          writeResult = fwrite(datamsg.data,1,DATA_SIZE(msgSize),f);
           if(-1 == writeResult){
             sprintf(tag,"error writing the file %s" ,requestmsg.fileName);
             msgSize = fillBufferWithErrMsg(DISK_FULL,tag, buffer);
@@ -587,7 +587,7 @@ void logs(char * file, char * host, char * ip, char * protocol, int clientPort, 
     case LOG_START_WRITE: sprintf(toLog,"\n[%s][Host: %s][IP:%s][Protocol:%s][Port:%d][CONNECTION STARTED][WRITE MODE]",getDateAndTime(),host, ip, protocol, clientPort); break;
     case LOG_READ: sprintf(toLog,"\n[%s][Host: %s][IP:%s][Protocol:%s][Port:%d][File %s][Send block:%d]",getDateAndTime(),host, ip, protocol, clientPort,file,blockNumber); break;
     case LOG_WRITE: sprintf(toLog,"\n[%s][Host: %s][IP:%s][Protocol:%s][Port:%d][File %s][Recived block:%d]",getDateAndTime(),host, ip, protocol, clientPort,file,blockNumber); break;
-    case LOG_END: sprintf(toLog,"\n[%s][Host: %s][IP:%s][Protocol:%s][Port:%d][File %10s][SUCCED]",getDateAndTime(),host, ip, protocol, clientPort,file); break;
+    case LOG_END: sprintf(toLog,"\n[%s][Host: %s][IP:%s][Protocol:%s][Port:%d][File %s][SUCCED]",getDateAndTime(),host, ip, protocol, clientPort,file); break;
   }
 
 	fprintf(stderr,"%s",toLog);

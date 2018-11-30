@@ -14,7 +14,7 @@
 
 headers getMessageTypeWithBuffer(char * buffer){
 	uint16_t header;
-	memcpy(&header,&(buffer[0]),sizeof(uint16_t));
+	memcpy(&header,buffer,sizeof(uint16_t));
 	return header;
 }
 
@@ -35,7 +35,7 @@ dataMsg fillDataWithBuffer(size_t dataSize, char * buffer){
 
 	memcpy(&(msg.header),buffer,sizeof(uint16_t));
 	memcpy(&(msg.blockNumber),&(buffer[2]),sizeof(uint16_t));
-	strcpy(msg.data,&(buffer[4]));
+	memcpy(msg.data,&(buffer[4]),dataSize-1);
 
 	return msg;
 }
