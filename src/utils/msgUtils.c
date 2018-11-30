@@ -79,7 +79,7 @@ int fillBufferWithDataMsg(int blockNumber, char * data, size_t dataSize,char * b
 	memcpy(&(buffer[2]),&blockNumber,sizeof(uint16_t));
 	memcpy(&(buffer[4]),data,dataSize);
 
-	return 5 + strlen(data);
+	return 5 + dataSize;
 }
 int fillBufferWithAckMsg(int blockNumber, char * buffer){
 	memset(buffer,0,sizeof(buffer));

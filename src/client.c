@@ -24,8 +24,8 @@
 
 #define TCP_ARG "TCP"
 #define UDP_ARG "UDP"
-#define READ_ARG "l"
-#define WRITE_ARG "r"
+#define READ_ARG "r"
+#define WRITE_ARG "w"
 
 #define EXIT_ON_WRONG_VALUE(wrongValue, errorMsg, returnValue)                          \
 do{                                              		    	                        \
@@ -37,12 +37,14 @@ do{                                              		    	                        
     }		    	                                                                    \
 }while(0)
 
-#define LOG_START 0 
-#define LOG_NORMAL 1 
-#define LOG_END 2
+#define LOG_START_READ 0 
+#define LOG_START_WRITE 1 
+#define LOG_READ 2
+#define LOG_WRITE 3 
+#define LOG_END 4
 
 void logError(char * hostName, int port, int errorCode, char * errormsg);
-void logc(char * hostName, int port, char * fileName, int block, int mode, bool operation);
+void logc(char * hostName, int port, char * fileName, int block, int mode);
 
 void tcpClient(bool isReadMode, char * hostName, char * file);
 void udpClient(bool isReadMode, char * hostName, char * file);
@@ -52,8 +54,8 @@ int main(int argc, char * argv[]){
 
 	//Check the args are correct
 	if( argc != 5
-		|| (!strcmp(argv[2],TCP_ARG) && !strcmp(argv[2],UDP_ARG))
-		|| (!strcmp(argv[3],READ_ARG) && !strcmp(argv[3],WRITE_ARG))
+		|| !(!strcmp(argv[2],TCP_ARG) || !strcmp(argv[2],UDP_ARG))
+		|| !(!strcmp(argv[3],READ_ARG)|| !strcmp(argv[3],WRITE_ARG))
 	){
 		fprintf(stderr,"%s",USAGE_ERROR_MSG);
 	}
@@ -95,6 +97,8 @@ int reciveMsg(int s, char * buffer){
 
 
 void tcpClient(bool isReadMode, char * hostName, char * file){
+	char tag[1000];
+
     int s, addrlen, errcode;				
     struct addrinfo hints, *res;
     struct sockaddr_in myaddr_in;	    
@@ -147,7 +151,7 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 
 	//log the connection
 	port = ntohs(myaddr_in.sin_port);
-	logc(hostName, port, file, 0, LOG_START,isReadMode);
+	logc(hostName, port, file, 0, isReadMode? LOG_START_READ : LOG_START_WRITE);
 
 	//send request to start protocol
 	msgSize = fillBufferWithReadMsg(isReadMode,file, buffer);
@@ -161,12 +165,13 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 
 		//open the file to write
 		char destionationFile[30];
-		sprintf(destionationFile,"CLIENT.txt");
-	    if(NULL == (f = fopen(destionationFile,"wb+"))){
+		sprintf(destionationFile,"CLIENT.mp4");
+	    if(NULL == (f = fopen(destionationFile,"wb"))){
 	        //if error send error msg 
-	        msgSize = fillBufferWithErrMsg(UNKNOWN,"UNKNOWN", buffer);
+        	sprintf(tag,"client couln't open %s" ,file);
+	        msgSize = fillBufferWithErrMsg(UNKNOWN,tag, buffer);
 	        EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error msg",(send(s, buffer, msgSize, 0) != msgSize));
-	        logError(hostName,port,UNKNOWN, file);
+	        logError(hostName,port,UNKNOWN, tag);
 	        exit(EXIT_FAILURE);
 	    }
 
@@ -174,48 +179,50 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 			//recive first one block
 			msgSize = reciveMsg(s,buffer);
 			if(msgSize < 0){
-				msgSize = fillBufferWithErrMsg(UNKNOWN,"UNKNOWN", buffer);
+				msgSize = fillBufferWithErrMsg(UNKNOWN,"Error on reciving block", buffer);
 				EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error msg",(send(s, buffer, msgSize, 0) != msgSize));
-				logError(hostName,port,UNKNOWN, "UNKNOWNa");
+				logError(hostName,port,UNKNOWN, "Error on reciving block");
 				exit(EXIT_FAILURE);
 			}
 
 			//act according to type
 			switch(getMessageTypeWithBuffer(buffer)){
 				case DATA_TYPE:
-
 					datamsg = fillDataWithBuffer(msgSize,buffer);
 
 					//check if block number is the correct one
 					if(datamsg.blockNumber != blockNumber ){
-						msgSize = fillBufferWithErrMsg(UNKNOWN,"UNKNOWN", buffer);
+						msgSize = fillBufferWithErrMsg(UNKNOWN,"recived blockNumber doesn't match with current blockNumber", buffer);
 					    EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));
-					    logError(hostName,port,UNKNOWN, "UNKNOWNa");
+					    logError(hostName,port,UNKNOWN, "recived blockNumber doesn't match with current blockNumber");
 					    exit(EXIT_FAILURE);
 					}
 					//write the send data
-					writeResult = fwrite(datamsg.data,sizeof(char),strlen(datamsg.data),f);
+					writeResult = fwrite(datamsg.data,sizeof(char),msgSize-5,f);
 					if(-1 == writeResult){
-						msgSize = fillBufferWithErrMsg(DISK_FULL,"DISK_FULL", buffer);
+						sprintf(tag,"error writing the file %s" ,file);
+						msgSize = fillBufferWithErrMsg(DISK_FULL,tag, buffer);
 					    EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));
-					    logError(hostName,port,DISK_FULL, "DISK_FULL");
+					    logError(hostName,port,DISK_FULL, tag);
 					    exit(EXIT_FAILURE);
 					}
 					//check if the block is the last -- size less than 512 bytes
-					if(sizeof(datamsg.data) < MSG_DATA_SIZE)
+					if((msgSize-5) < MSG_DATA_SIZE)
 						endSesion = TRUE;
 					//increment block number 
 					blockNumber += 1;
 				break;
 				case ERR_TYPE: 
 					errmsg = fillErrWithBuffer(buffer);
-		            logError(hostName,port,errmsg.errorCode, errmsg.errorMsg);
+					sprintf(tag,"received error when waiting data %d: %s",errmsg.errorCode, errmsg.errorMsg); 
+		            logError(hostName,port,errmsg.errorCode, tag);
 		            exit(EXIT_FAILURE);
 				break;
 				default:
-					msgSize = fillBufferWithErrMsg(ILLEGAL_OPERATION,"ILLEGAL_OPERATION", buffer);
+					sprintf(tag,"unrecognized operation in current context %d" ,getMessageTypeWithBuffer(buffer));
+					msgSize = fillBufferWithErrMsg(ILLEGAL_OPERATION,tag, buffer);
 	                EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));
-	                logError(hostName,port,getMessageTypeWithBuffer(buffer), &buffer[4]);
+	                logError(hostName,port,ILLEGAL_OPERATION, tag);
 	                exit(EXIT_FAILURE);
 				break; 
 			}
@@ -224,7 +231,7 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 			msgSize = fillBufferWithAckMsg(datamsg.blockNumber, buffer);
 			EXIT_ON_WRONG_VALUE(TRUE,"Error on sending ack for block",(send(s, buffer, msgSize, 0) != msgSize));
 			//log received data 
-			logc(hostName, port, file, datamsg.blockNumber, LOG_NORMAL,isReadMode);
+			logc(hostName, port, file, datamsg.blockNumber, LOG_READ);
 		}
 
 	}else{
@@ -232,9 +239,10 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
       //open the request file
       if(NULL == (f = fopen(file,"rb"))){
         //if error send error msg 
-        msgSize = fillBufferWithErrMsg(UNKNOWN,"UNKNOWN", buffer);
+        sprintf(tag,"client couln't found %s" ,file);
+        msgSize = fillBufferWithErrMsg(UNKNOWN,tag, buffer);
         EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error msg",(send(s, buffer, msgSize, 0) != msgSize));
-        logError(hostName,port,UNKNOWN, file);
+        logError(hostName,port,UNKNOWN, tag);
         exit(EXIT_FAILURE);
       }
 
@@ -242,9 +250,9 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
          //wait for ack 
           msgSize = reciveMsg(s,buffer);
           if(msgSize < 0){
-            msgSize = fillBufferWithErrMsg(UNKNOWN,"UNKNOWN", buffer);
+            msgSize = fillBufferWithErrMsg(UNKNOWN,"Error on receiving ack", buffer);
             EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error msg",(send(s, buffer, msgSize, 0) != msgSize));
-            logError(hostName,port,UNKNOWN, "UNKNOWNa");
+            logError(hostName,port,UNKNOWN, "Error on receiving ack");
             exit(EXIT_FAILURE);
           }
 
@@ -253,24 +261,24 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
               ackmsg = fillAckWithBuffer(buffer);
               //check if ack its correct; if not an error is send
               if( blockNumber != ackmsg.blockNumber ){
-                msgSize = fillBufferWithErrMsg(UNKNOWN,"UNKNOWN", buffer);
+                msgSize = fillBufferWithErrMsg(UNKNOWN,"recived blockNumber doesn't match with current blockNumber", buffer);
                 EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));
-                logError(hostName,port,UNKNOWN, "line 240");
+                logError(hostName,port,UNKNOWN, "recived blockNumber doesn't match with current blockNumber");
                 exit(EXIT_FAILURE);
               }
               blockNumber += 1;
             break;
             case ERR_TYPE: 
               errmsg = fillErrWithBuffer(buffer);
-              logError(hostName,port,errmsg.errorCode, errmsg.errorMsg);
+              sprintf(tag,"received error when waiting ack %d: %s",errmsg.errorCode, errmsg.errorMsg); 
+              logError(hostName,port,errmsg.errorCode, tag);
               exit(EXIT_FAILURE);
             break;
             default:
-              //logError(ILLEGAL_OPERATION, "ILLEGAL_OPERATION");
-              //CAMBIAR POR EL DE ARRIBA AL TERMINAR
-              logError(hostName,port,buffer[1], "ILLEGAL_OPERATION");
-              msgSize = fillBufferWithErrMsg(ILLEGAL_OPERATION,"ILLEGAL_OPERATION", buffer);
+              sprintf(tag,"unrecognized operation in current context %d" ,getMessageTypeWithBuffer(buffer));
+              msgSize = fillBufferWithErrMsg(ILLEGAL_OPERATION,tag, buffer);
               EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));
+              logError(hostName,port,ILLEGAL_OPERATION, tag);
               exit(EXIT_FAILURE);
             break; 
           }
@@ -279,16 +287,17 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
         memset(dataBuffer,0,MSG_DATA_SIZE);
         readSize = fread(dataBuffer, sizeof(char), MSG_DATA_SIZE, f);
         if(-1 == readSize){
-          msgSize = fillBufferWithErrMsg(UNKNOWN,"UNKNOWN", buffer);
+          sprintf(tag,"error reading the file %s" ,file);
+          msgSize = fillBufferWithErrMsg(UNKNOWN,tag, buffer);
           EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));
-          logError(hostName,port,UNKNOWN, "line 267");
+          logError(hostName,port,UNKNOWN, tag);
           exit(EXIT_FAILURE);
         }
 
         msgSize = fillBufferWithDataMsg(blockNumber,dataBuffer,readSize,buffer);
         EXIT_ON_WRONG_VALUE(TRUE,"Error on sending data block",(send(s, buffer, msgSize, 0) != msgSize));
 
-        logc(hostName,port, file, blockNumber,LOG_NORMAL,isReadMode);
+        logc(hostName,port, file, blockNumber,LOG_WRITE);
 
         //check if the file has ended
         if(feof(f))
@@ -298,7 +307,7 @@ void tcpClient(bool isReadMode, char * hostName, char * file){
 
 
 	fclose(f);
-	logc(hostName, port, file, 0, LOG_END,isReadMode);
+	logc(hostName, port, file, 0, LOG_END);
 
 	/* Now, shutdown the connection for further sends.
 	 * This will cause the server to receive an end-of-file
@@ -329,7 +338,7 @@ const char * getDateAndTime(){
 	return timeString;
 }
 
-void logc(char * hostName, int port, char * fileName, int block, int mode,bool operation){
+void logc(char * hostName, int port, char * fileName, int block, int mode){
   char toLog[LOG_MESSAGE_SIZE];
   char path[CLIENT_FILE_PATH_SIZE];
 
@@ -337,15 +346,10 @@ void logc(char * hostName, int port, char * fileName, int block, int mode,bool o
   FILE*logFile = fopen(path,"a+");
 
   switch(mode){
-	case LOG_START:
-          if(operation){
-              sprintf(toLog,"\nSTARTING PROCESS OF READING\n[%s][Host: %s][Port:%d][File %10s][CONNECTION STARTED]",getDateAndTime(),hostName, port,fileName);
-          }else{
-              sprintf(toLog,"\nSTARTING PROCESS OF WRITING\n[%s][Host: %s][Port:%d][File %10s][CONNECTION STARTED]",getDateAndTime(),hostName, port,fileName);
-          }
-          
-          break;
-  	case LOG_NORMAL: sprintf(toLog,"\n[%s][Host: %s][Port:%d][File %10s][Send block:%d]",getDateAndTime(),hostName, port,fileName,block); break;
+	case LOG_START_READ: sprintf(toLog,"\n[%s][Host: %s][Port:%d][File %10s][CONNECTION STARTED][READ MODE]",getDateAndTime(),hostName, port,fileName); break;
+    case LOG_START_WRITE: sprintf(toLog,"\n[%s][Host: %s][Port:%d][File %10s][CONNECTION STARTED][WRITE MODE]",getDateAndTime(),hostName, port,fileName); break;
+  	case LOG_READ: sprintf(toLog,"\n[%s][Host: %s][Port:%d][File %10s][Recived block:%d]",getDateAndTime(),hostName, port,fileName,block); break;
+  	case LOG_WRITE: sprintf(toLog,"\n[%s][Host: %s][Port:%d][File %10s][Send block:%d]",getDateAndTime(),hostName, port,fileName,block); break;
   	case LOG_END: sprintf(toLog,"\n[%s][Host: %s][Port:%d][File %10s][SUCCED]",getDateAndTime(),hostName, port,fileName); break;
   }
 
