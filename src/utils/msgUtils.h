@@ -22,6 +22,7 @@
 #define MSG_MODE_SIZE 128
 #define MSG_DATA_SIZE 512
 #define MSG_ERROR_SIZE 128
+#define TIME_OUT 10
 
 #define OCTET_MODE "Octet"
 
@@ -65,5 +66,7 @@ int fillBufferWithReadMsg(bool isRead,char * fileName, char * buffer);
 int fillBufferWithDataMsg(int blockNumber, char * data, size_t dataSize , char * buffer);
 int fillBufferWithAckMsg(int blockNumber, char * buffer);
 int fillBufferWithErrMsg(errorMsgCodes errorcode, char * errorMsg, char * buffer);
+
+int check_timeout(int s, char *buffer, struct sockaddr_in clientaddr_in, socklen_t addrlen);
 
 #endif

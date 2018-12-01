@@ -41,7 +41,7 @@ void redefineSignal(int signal, void(*function)(int));
 #define LOG_READ 2
 #define LOG_WRITE 3 
 #define LOG_END 4
-
+#define MAX_ATTEMPS 5
 void logError(int errorcode, char * errorMsg);
 void logs(char * file, char * host, char * ip, char * protocol, int clientPort, int blockNumber, int mode);
 
@@ -506,7 +506,176 @@ void tcpServer(int s, struct sockaddr_in clientaddr_in){
 
 
 void udpServer(int s, char * buffer, struct sockaddr_in clientaddr_in){
-  fprintf(stderr, "%s\n","UDP SERVER");
+    char tag[1000];
+    
+    int i;//Intentos
+    int port;
+    char hostIp[HOSTIP_SIZE];
+    char hostName[HOSTNAME_SIZE];
+    
+    ackMsg ackmsg;
+    errMsg errmsg;
+    dataMsg datamsg;
+    rwMsg requestmsg;
+    
+    FILE * f = NULL;
+    int blockNumber = 0;
+    int writeResult = 0;
+    char dataBuffer[MSG_DATA_SIZE];
+    
+    socklen_t addrlen=sizeof(struct sockaddr_in);
+    
+    int msgSize, readSize;
+    bool endSesion = FALSE;
+    
+    //obtain the host information to start communicacion with remote host
+    if( getnameinfo((struct sockaddr *)&clientaddr_in,sizeof(clientaddr_in),hostName,sizeof(hostName),NULL,0,0) )
+        EXIT_ON_WRONG_VALUE(NULL,"error inet_ntop",inet_ntop(AF_INET,&clientaddr_in.sin_addr,hostName,sizeof(hostName)));
+    
+    port = ntohs(clientaddr_in.sin_port);
+    strcpy(hostIp, inet_ntoa(clientaddr_in.sin_addr));
+    
+    //set opMode
+    struct linger lngr;
+    lngr.l_onoff = 1;
+    lngr.l_linger= 1;
+    EXIT_ON_WRONG_VALUE(-1,hostName,setsockopt(s,SOL_SOCKET,SO_LINGER,&lngr,sizeof(lngr)));
+    
+    //read client request to know if is required read or write
+    msgSize = recvfrom(s,buffer,TAM_BUFFER,0,(struct sockaddr *)&clientaddr_in,&addrlen);
+    if(msgSize < 0){
+        msgSize = fillBufferWithErrMsg(UNKNOWN,"error on receiving client request", buffer);
+        EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error msg",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize));
+        logError(UNKNOWN, "error on receiving client request");
+        exit(EXIT_FAILURE);
+    }
+    
+    requestmsg = fillReadMsgWithBuffer(buffer);
+    //if the msg isnt a request send error
+    if(READ_TYPE != requestmsg.header && WRITE_TYPE != requestmsg.header){
+        msgSize = fillBufferWithErrMsg(ILLEGAL_OPERATION,"error on client request header: isn't read or write", buffer);
+        EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize));
+        logError(ILLEGAL_OPERATION, "error on client request header: isn't read or write");
+        exit(EXIT_FAILURE);
+    }
+    
+    //TODO
+    if(msgSize<TAM_BUFFER)
+        buffer[TAM_BUFFER]='\0';
+    
+    logs(NULL, hostName, hostIp, "TCP", port, 0,(requestmsg.header == READ_TYPE)? LOG_START_READ : LOG_START_WRITE);
+    
+    
+    //check if file exists
+    bool fileExists = (access( requestmsg.fileName, F_OK ) != -1) ? TRUE : FALSE;
+    
+    //obtain the request type and bifurcate
+    if(requestmsg.header == READ_TYPE){
+        
+        //send error if file not found
+        if(!fileExists){
+            sprintf(tag,"server couln't found %s" ,requestmsg.fileName);
+            msgSize = fillBufferWithErrMsg(FILE_NOT_FOUND,tag, buffer);
+            EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize));
+            logError(FILE_NOT_FOUND, tag);
+            exit(EXIT_FAILURE);
+        }
+        
+        //open the request file
+        if(NULL == (f = fopen(requestmsg.fileName,"rb"))){
+            //if error send error msg
+            sprintf(tag,"server couln't found %s" ,requestmsg.fileName);
+            msgSize = fillBufferWithErrMsg(UNKNOWN, tag, buffer);
+            EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize));
+            logError(UNKNOWN, tag);
+            exit(EXIT_FAILURE);
+        }
+        
+        while(!endSesion){
+            //send block
+            memset(dataBuffer,0,MSG_DATA_SIZE);
+            readSize = fread(dataBuffer, 1, MSG_DATA_SIZE, f);
+            if(-1 == readSize){
+                sprintf(tag,"error reading the file %s" ,requestmsg.fileName);
+                msgSize = fillBufferWithErrMsg(UNKNOWN,tag, buffer);
+                EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize));
+                logError(UNKNOWN, tag);
+                exit(EXIT_FAILURE);
+            }
+            
+            msgSize = fillBufferWithDataMsg(blockNumber,dataBuffer,readSize,buffer);
+            EXIT_ON_WRONG_VALUE(TRUE,"Error on sending data block",(sendto(s, buffer, TAM_BUFFER, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize));
+            
+            //logs(requestmsg.fileName,hostName, hostIp, "TCP", port, blockNumber,LOG_READ);
+            
+            //wait for ack
+            for(i=0;i<=MAX_ATTEMPS;i++){
+                if(i==MAX_ATTEMPS){
+                    //Mostrar mensaje para decir que se han superado el numero de intentos
+                    exit(1);
+                }
+                
+                msgSize=check_timeout(s,buffer,clientaddr_in,addrlen);
+                switch(msgSize){
+                    case -1://Error
+                        //Mostrar mensaje error
+                        break;
+                    case -2://timeout
+                        msgSize = fillBufferWithErrMsg(UNKNOWN,"Error on receiving ack", buffer);
+                        EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error msg",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize));
+                        break;
+                    default://valid
+                        break;
+                }
+            }
+            
+            switch(getMessageTypeWithBuffer(buffer)){
+                case ACK_TYPE:
+                    ackmsg = fillAckWithBuffer(buffer);
+                    //check if ack its correct; if not an error is send
+                    if( blockNumber != ackmsg.blockNumber ){
+                        msgSize = fillBufferWithErrMsg(UNKNOWN,"recived blockNumber doesn't match with current blockNumber", buffer);
+                        EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize));
+                        logError(UNKNOWN, "recived blockNumber doesn't match with current blockNumber");
+                        exit(EXIT_FAILURE);
+                    }
+                    blockNumber += 1;
+                    break;
+                case ERR_TYPE:
+                    errmsg = fillErrWithBuffer(buffer);
+                    sprintf(tag,"received error when waiting ack %d: %s",errmsg.errorCode, errmsg.errorMsg);
+                    logError(errmsg.errorCode, tag);
+                    exit(EXIT_FAILURE);
+                    break;
+                default:
+                    sprintf(tag,"unrecognized operation in current context %d" ,getMessageTypeWithBuffer(buffer));
+                    msgSize = fillBufferWithErrMsg(ILLEGAL_OPERATION,tag, buffer);
+                    EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize));
+                    logError(ILLEGAL_OPERATION, tag);
+                    exit(EXIT_FAILURE);
+                    break;
+            }
+            
+            //check if the file has ended
+            if(feof(f))
+                endSesion = TRUE;
+        }
+        
+    }else{
+        
+    }
+    
+    /* Now, shutdown the connection for further sends.
+     * This will cause the server to receive an end-of-file
+     * condition after it has received all the requests that
+     * have just been sent, indicating that we will not be
+     * sending any further requests.
+     */
+    EXIT_ON_WRONG_VALUE(-1,"unable to shutdown socket",shutdown(s, 1));
+    
+    fclose(f);
+    close(s);
+    logs(requestmsg.fileName,hostName, hostIp, "TCP", port, 0, LOG_END);
 }
 
 void SIGTERMHandler(int ss){

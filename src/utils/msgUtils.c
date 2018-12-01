@@ -100,3 +100,27 @@ int fillBufferWithErrMsg(errorMsgCodes errorcode, char * errorMsg, char * buffer
 
 	return 5 + sizeof(errorMsg);
 }
+
+int check_timeout(int s, char *buffer, struct sockaddr_in clientaddr_in, socklen_t addrlen){
+    fd_set f;
+    int value;
+    struct timeval time;
+    
+    // set up the file descriptor set
+    FD_ZERO(&f);
+    FD_SET(s, &f);
+    
+    // set up the struct timeval for the timeout
+    time.tv_sec = TIME_OUT;
+    time.tv_usec = 0;
+    
+    // wait until timeout or data received
+    value = select(s+1, &f, NULL, NULL, &time); //Sirve para esperar hasta que haya algo que recibir
+    if (value == 0){
+        return -2; // timeout!
+    } else if (value == -1){
+        return -1; // error
+    }
+    
+    return recvfrom(s,buffer,TAM_BUFFER-1,0,(struct sockaddr *)&clientaddr_in,&addrlen);
+}
