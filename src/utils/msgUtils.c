@@ -122,5 +122,5 @@ int check_timeout(int s, char *buffer, struct sockaddr_in clientaddr_in, socklen
         return -1; // error
     }
     
-    return recvfrom(s,buffer,TAM_BUFFER-1,0,(struct sockaddr *)&clientaddr_in,&addrlen);
+    return recvfrom(s,buffer,TAM_BUFFER,0,(struct sockaddr *)&clientaddr_in,&addrlen);
 }

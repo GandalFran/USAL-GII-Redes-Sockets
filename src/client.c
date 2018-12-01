@@ -37,6 +37,8 @@ do{                                              		    	                        
     }		    	                                                                    \
 }while(0)
 
+
+
 #define LOG_START_READ 0 
 #define LOG_START_WRITE 1 
 #define LOG_READ 2
@@ -349,6 +351,8 @@ void udpClient(bool isReadMode, char * hostName, char * file){
     struct addrinfo *servidor;
     
     char buffer[TAM_BUFFER];
+    char lastMessageReceived[TAM_BUFFER];
+    char lastAckSended[4];
     socklen_t addrlen=sizeof(struct sockaddr_in);
     
     /* Create the socket. */
@@ -385,14 +389,18 @@ void udpClient(bool isReadMode, char * hostName, char * file){
     
     //send request to start protocol
     msgSize = fillBufferWithReadMsg(isReadMode,file, buffer);
-    EXIT_ON_WRONG_VALUE(TRUE,"Error on sending read/write request",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&servaddr_in, sizeof(struct sockaddr_in)) != msgSize));
+    if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&servaddr_in, sizeof(struct sockaddr_in)) != msgSize){
+        char errorTag[200];                                                             
+        fprintf(stderr, "\n[%s:%d:%s]%s", __FILE__, __LINE__, __FUNCTION__,"ERROR ON SENDING REQUEST");
+    }
     
     //check if file exists
     bool fileExists = (access( file, F_OK ) != -1) ? TRUE : FALSE;
     
     //bifurcate into read or write
     if(isReadMode){
-        
+        strcpy(lastMessageReceived,"");
+        strcpy(lastAckSended,"");
         //open the file to write
         char destionationFile[30];
         sprintf(destionationFile,"log/%s",file);
@@ -400,9 +408,10 @@ void udpClient(bool isReadMode, char * hostName, char * file){
             //if error send error msg
             sprintf(tag,"client couln't open %s" ,file);
             msgSize = fillBufferWithErrMsg(UNKNOWN,tag, buffer);
-            EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error msg",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&servaddr_in, sizeof(struct sockaddr_in)) != msgSize));
+            if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&servaddr_in, sizeof(struct sockaddr_in)) != msgSize){                                                            
+        			fprintf(stderr, "\n[%s:%d:%s]%s", __FILE__, __LINE__, __FUNCTION__,"ERROR ON OPENING FILE");
+            }
             logError(hostName,port,UNKNOWN, tag);
-            exit(EXIT_FAILURE);
         }
         
         while(!endSesion){
@@ -418,6 +427,14 @@ void udpClient(bool isReadMode, char * hostName, char * file){
             if(msgSize< TAM_BUFFER)
                 buffer[msgSize] = '\0';
             
+            //IF buffer and lastMessage are equals, then the ack was not reached
+            if(strcmp(buffer,lastMessageReceived)==0){
+            	if(sendto(s, lastAckSended, strlen(lastAckSended), 0,(struct sockaddr *)&servaddr_in, sizeof(struct sockaddr_in)) != msgSize){                                                           
+        			fprintf(stderr, "\n[%s:%d:%s]%s", __FILE__, __LINE__, __FUNCTION__,"ERROR ON SENDING ACK");
+            	}
+                continue;
+            }
+            
             //act according to type
             switch(getMessageTypeWithBuffer(buffer)){
                 case DATA_TYPE:
@@ -426,20 +443,24 @@ void udpClient(bool isReadMode, char * hostName, char * file){
                     //check if block number is the correct one
                     if(datamsg.blockNumber != blockNumber ){
                         msgSize = fillBufferWithErrMsg(UNKNOWN,"recived blockNumber doesn't match with current blockNumber", buffer);
-                        EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&servaddr_in, sizeof(struct sockaddr_in)) != msgSize));
+                        if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&servaddr_in, sizeof(struct sockaddr_in)) != msgSize){                                                           
+        					fprintf(stderr, "\n[%s:%d:%s]%s", __FILE__, __LINE__, __FUNCTION__,"ERROR ON RECEIVING DATA");
+            			}
                         logError(hostName,port,UNKNOWN, "recived blockNumber doesn't match with current blockNumber");
-                        exit(EXIT_FAILURE);
+                        continue;
                     }
                     //write the send data
                     writeResult = fwrite(datamsg.data,1,DATA_SIZE(msgSize),f);
                     if(-1 == writeResult){
                         sprintf(tag,"error writing the file %s" ,file);
                         msgSize = fillBufferWithErrMsg(DISK_FULL,tag, buffer);
-                        EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&servaddr_in, sizeof(struct sockaddr_in)) != msgSize));
+                        if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&servaddr_in, sizeof(struct sockaddr_in)) != msgSize){                                                           
+        					fprintf(stderr, "\n[%s:%d:%s]%s", __FILE__, __LINE__, __FUNCTION__,"ERROR ON WRITING");
+            			}
                         logError(hostName,port,DISK_FULL, tag);
-                        exit(EXIT_FAILURE);
+                        continue;
                     }
-                    
+                    strcpy(lastMessageReceived,buffer);
                     //check if the block is the last -- size less than 512 bytes
                     if(DATA_SIZE(msgSize) < MSG_DATA_SIZE)
                         endSesion = TRUE;
@@ -455,15 +476,21 @@ void udpClient(bool isReadMode, char * hostName, char * file){
                 default:
                     sprintf(tag,"unrecognized operation in current context %d" ,getMessageTypeWithBuffer(buffer));
                     msgSize = fillBufferWithErrMsg(ILLEGAL_OPERATION,tag, buffer);
-                    EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&servaddr_in, sizeof(struct sockaddr_in)) != msgSize));
+                    if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&servaddr_in, sizeof(struct sockaddr_in)) != msgSize){                                                             
+        				fprintf(stderr, "\n[%s:%d:%s]%s", __FILE__, __LINE__, __FUNCTION__,"ERROR ON RECEIVING BUFFER");
+            		}
                     logError(hostName,port,ILLEGAL_OPERATION, tag);
-                    exit(EXIT_FAILURE);
+                    continue;
                     break;
             }
             
             //send ack
             msgSize = fillBufferWithAckMsg(datamsg.blockNumber, buffer);
-            EXIT_ON_WRONG_VALUE(TRUE,"Error on sending ack for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&servaddr_in, sizeof(struct sockaddr_in)) != msgSize));
+            if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&servaddr_in, sizeof(struct sockaddr_in)) != msgSize){                                                            
+        		fprintf(stderr, "\n[%s:%d:%s]%s", __FILE__, __LINE__, __FUNCTION__,"ERROR ON SENDING ACK");
+        		continue;
+            }
+            strcpy(lastAckSended,buffer);
             //log received data
             logc(hostName, port, file, datamsg.blockNumber, LOG_READ);
         }

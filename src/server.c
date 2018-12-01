@@ -427,9 +427,8 @@ void tcpServer(int s, struct sockaddr_in clientaddr_in){
       msgSize = fillBufferWithAckMsg(datamsg.blockNumber, buffer);
       EXIT_ON_WRONG_VALUE(TRUE,"Error on sending ack for block",(send(s, buffer, msgSize, 0) != msgSize));
       blockNumber += 1;
-
-    while(!endSesion){
-
+      
+      while(!endSesion){
       //recive block
       msgSize = reciveMsg(s,buffer);
       if(msgSize < 0){
@@ -590,11 +589,29 @@ void udpServer(int s, char * buffer, struct sockaddr_in clientaddr_in){
             logError(UNKNOWN, tag);
             exit(EXIT_FAILURE);
         }
+        int blockNumber=1;
+        fseek(f,0,SEEK_END);
+        int total=ftell(f);
+        fseek(f,0,SEEK_SET);
+        int restante=total;
         
-        while(!endSesion){
+        if(restante==0){
+            ++restante;
+        }else if(restante%100==0){
+            --restante;
+        }
+        
+        while(restante>0){
             //send block
             memset(dataBuffer,0,MSG_DATA_SIZE);
-            readSize = fread(dataBuffer, 1, MSG_DATA_SIZE, f);
+            
+            if(restante>MSG_DATA_SIZE){
+                readSize = fread(dataBuffer, 1, MSG_DATA_SIZE, f);
+                restante-=(MSG_DATA_SIZE);
+            }else{
+                readSize=fread(dataBuffer,restante,MSG_DATA_SIZE,f);
+                restante=0;
+            }
             if(-1 == readSize){
                 sprintf(tag,"error reading the file %s" ,requestmsg.fileName);
                 msgSize = fillBufferWithErrMsg(UNKNOWN,tag, buffer);
@@ -623,7 +640,7 @@ void udpServer(int s, char * buffer, struct sockaddr_in clientaddr_in){
                     case -2://timeout
                         msgSize = fillBufferWithErrMsg(UNKNOWN,"Error on receiving ack", buffer);
                         EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error msg",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize));
-                        break;
+                        continue;
                     default://valid
                         break;
                 }
@@ -655,10 +672,6 @@ void udpServer(int s, char * buffer, struct sockaddr_in clientaddr_in){
                     exit(EXIT_FAILURE);
                     break;
             }
-            
-            //check if the file has ended
-            if(feof(f))
-                endSesion = TRUE;
         }
         
     }else{
