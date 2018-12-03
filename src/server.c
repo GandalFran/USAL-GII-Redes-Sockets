@@ -46,6 +46,7 @@ void redefineSignal(int signal, void(*function)(int));
 #define MAX_ATTEMPS 5
 void logError(int errorcode, char * errorMsg);
 void logs(char * file, char * host, char * ip, char * protocol, int clientPort, int blockNumber, int mode);
+void logIssue(char * asdf);
 
 #define EXIT_ON_WRONG_VALUE(wrongValue, errorMsg, returnValue)                          \
 do{                                              		    	                              \
@@ -120,7 +121,7 @@ int main(int argc, char * argv[]){
 	/* Bind the listen address to the socket. */
 	if (bind(ls_TCP, (const struct sockaddr *) &myaddr_in, sizeof(struct sockaddr_in)) == -1) {
 		perror(argv[0]);
-		fprintf(stderr, "%s: unable to bind address TCP\n", argv[0]);
+		logIssue(": unable to bind address TCP\n");
 		exit(1);
 	}
 		/* Initiate the listen on the socket so remote users
@@ -129,7 +130,7 @@ int main(int argc, char * argv[]){
 		 */
 	if (listen(ls_TCP, 5) == -1) {
 		perror(argv[0]);
-		fprintf(stderr, "%s: unable to listen on socket\n", argv[0]);
+		logIssue("%s: unable to listen on socket\n");
 		exit(1);
 	}
 
@@ -137,14 +138,12 @@ int main(int argc, char * argv[]){
 	/* Create the socket UDP. */
 	s_UDP = socket (AF_INET, SOCK_DGRAM, 0);
 	if (s_UDP == -1) {
-		perror(argv[0]);
-		printf("%s: unable to create socket UDP\n", argv[0]);
+		logIssue("%s: unable to create socket UDP\n");
 		exit(1);
 	   }
 	/* Bind the server's address to the socket. */
 	if (bind(s_UDP, (struct sockaddr *) &myaddr_in, sizeof(struct sockaddr_in)) == -1) {
-		perror(argv[0]);
-		printf("%s: unable to bind address UDP\n", argv[0]);
+		logIssue("%s: unable to bind address UDP\n");
 		exit(1);
 	    }
   		/* Now, all the initialization of the server is
@@ -196,6 +195,7 @@ int main(int argc, char * argv[]){
 
         /* Comprobamos si el socket seleccionado es el socket TCP */
         if (FD_ISSET(ls_TCP, &readmask)) {
+
             /* Note that addrlen is passed as a pointer
              * so that the accept call can return the
              * size of the returned address.
@@ -229,7 +229,6 @@ int main(int argc, char * argv[]){
                   close(s_TCP);
               }
          }
-
           /* Comprobamos si el socket seleccionado es el socket UDP */
           if (FD_ISSET(s_UDP, &readmask)) {
               /* This call will block until a new
@@ -245,7 +244,6 @@ int main(int argc, char * argv[]){
                * null terminated.
                */
               buffer[cc]='\0';
-	      
               pid_t serverInstancePid;
               EXIT_ON_WRONG_VALUE(-1,"unable to fork tcp server instance",serverInstancePid = fork());
               if(0 == serverInstancePid){
@@ -266,7 +264,6 @@ int main(int argc, char * argv[]){
 #define HOSTNAME_SIZE 100
 #define HOSTIP_SIZE 100
 
-void logIssue(char * asdf);
 
 
 int reciveMsg(int s, char * buffer){
@@ -538,7 +535,7 @@ void tcpServer(int s, struct sockaddr_in clientaddr_in){
 }
 
 #define TIMEOUT 5
-int reciveUdpMsg(int s, char * buffer, struct sockaddr_in addr){
+int reciveUdpMsg(int s, char * buffer, struct sockaddr_in * addr){
   int i=0,j;
   memset(buffer,0,sizeof(buffer));
 /*
@@ -559,7 +556,7 @@ int reciveUdpMsg(int s, char * buffer, struct sockaddr_in addr){
 
     int size = sizeof(struct sockaddr_in);
     alarm(TIMEOUT);
-    j = recvfrom(s, buffer, TAM_BUFFER, 0,(struct sockaddr*)&addr,&size);
+    j = recvfrom(s, buffer, TAM_BUFFER, 0,(struct sockaddr*)addr,&size);
     if(j< TAM_BUFFER)
         buffer[j] = '\0';
     return j;
@@ -586,6 +583,34 @@ void udpServer(int sUdp, char * buffer, struct sockaddr_in clientaddr_in){
   int msgSize, readSize;
   bool endSesion = FALSE;
 
+//nines
+    struct in_addr reqaddr; /* for requested host's address */
+    struct hostent *hp;   /* pointer to host info for requested host */
+    int nc, errcode;
+
+    struct addrinfo hints, *res;
+
+  int addrlen;
+
+    addrlen = sizeof(struct sockaddr_in);
+
+      memset (&hints, 0, sizeof (hints));
+      hints.ai_family = AF_INET;
+    /* Treat the message as a string containing a hostname. */
+      /* Esta funci�n es la recomendada para la compatibilidad con IPv6 gethostbyname queda obsoleta. */
+    errcode = getaddrinfo (buffer, NULL, &hints, &res);
+    if (errcode != 0){
+    /* Name was not found.  Return a
+     * special value signifying the error. */
+    reqaddr.s_addr = ADDRNOTFOUND;
+      }
+    else {
+    /* Copy address of host into the return buffer. */
+    reqaddr = ((struct sockaddr_in *) res->ai_addr)->sin_addr;
+  }
+     freeaddrinfo(res);
+
+
   //create new port (efimero) (soket + bind)
   int s;
   struct sockaddr_in myaddrin;
@@ -594,26 +619,26 @@ void udpServer(int sUdp, char * buffer, struct sockaddr_in clientaddr_in){
   myaddrin.sin_port = 0;
   myaddrin.sin_addr.s_addr = INADDR_ANY;
 
-  s = socket(AF_INET,SOCK_DGRAM,0);
-  bind(s,(struct sockaddr*)&myaddrin,sizeof(struct sockaddr_in));
+  /* Create the socket UDP. */
+  s = socket (AF_INET, SOCK_DGRAM, 0);
+  if (s == -1) {
+    logIssue(" unable to create socket UDP\n");
+    exit(1);
+     }
+  /* Bind the server's address to the socket. */
+  if (bind(s, (struct sockaddr *) &myaddrin, sizeof(struct sockaddr_in)) == -1) {
+    logIssue(" unable to bind address UDP\n");
+    exit(1);
+      }
 
-  //obtain the host information to start communicacion with remote host
-  if( getnameinfo((struct sockaddr *)&clientaddr_in,sizeof(clientaddr_in),hostName,sizeof(hostName),NULL,0,0) )
-    EXIT_ON_WRONG_VALUE(NULL,"error inet_ntop",inet_ntop(AF_INET,&clientaddr_in.sin_addr,hostName,sizeof(hostName)));
-  port = ntohs(clientaddr_in.sin_port);
-  strcpy(hostIp, inet_ntoa(clientaddr_in.sin_addr));
+EXIT_ON_WRONG_VALUE(-1,"unable to read socket address", getsockname(s, (struct sockaddr *)&myaddrin, &addrlen));
 
-  //set opMode
-  struct linger lngr;
-  lngr.l_onoff = 1;
-  lngr.l_linger= 1;
-  EXIT_ON_WRONG_VALUE(-1,hostName,setsockopt(s,SOL_SOCKET,SO_LINGER,&lngr,sizeof(lngr)));
-
+//PROTOCOLO EN SI
   requestmsg = fillReadMsgWithBuffer(buffer);
   //if the msg isnt a request send error 
   if(READ_TYPE != requestmsg.header && WRITE_TYPE != requestmsg.header){
     msgSize = fillBufferWithErrMsg(ILLEGAL_OPERATION,"error on client request header: isn't read or write", buffer);
-    EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&myaddrin,sizeof(struct sockaddr_in)) != msgSize));
+    EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize));
     logError(ILLEGAL_OPERATION, "error on client request header: isn't read or write");
     exit(EXIT_FAILURE);
   }
@@ -631,7 +656,7 @@ void udpServer(int sUdp, char * buffer, struct sockaddr_in clientaddr_in){
       if(!fileExists){
         sprintf(tag,"server couln't found %s" ,requestmsg.fileName);
         msgSize = fillBufferWithErrMsg(FILE_NOT_FOUND,tag, buffer);
-        EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&myaddrin,sizeof(struct sockaddr_in)) != msgSize));
+        EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize));
         logError(FILE_NOT_FOUND, tag);
         exit(EXIT_FAILURE);
       }
@@ -653,21 +678,21 @@ void udpServer(int sUdp, char * buffer, struct sockaddr_in clientaddr_in){
           if(-1 == readSize){
             sprintf(tag,"error reading the file %s" ,requestmsg.fileName);
             msgSize = fillBufferWithErrMsg(UNKNOWN,tag, buffer);
-            EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&myaddrin,sizeof(struct sockaddr_in)) != msgSize));
+            EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize));
             logError(UNKNOWN, tag);
             exit(EXIT_FAILURE);
           }
 
           msgSize = fillBufferWithDataMsg(blockNumber,dataBuffer,readSize,buffer);
-          EXIT_ON_WRONG_VALUE(TRUE,"Error on sending data block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&myaddrin,sizeof(struct sockaddr_in)) != msgSize));
+          EXIT_ON_WRONG_VALUE(TRUE,"Error on sending data block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize));
 
-          //logs(requestmsg.fileName,hostName, hostIp, "TCP", port, blockNumber,LOG_READ);
+          logs(requestmsg.fileName,hostName, hostIp, "UDP", port, blockNumber,LOG_READ);
 
         //wait for ack 
-          msgSize = reciveUdpMsg(s,buffer,myaddrin);
+          msgSize = reciveUdpMsg(s,buffer,&clientaddr_in);
           if(msgSize < 0){
             msgSize = fillBufferWithErrMsg(UNKNOWN,"Error on receiving ack", buffer);
-            EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error msg",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&myaddrin,sizeof(struct sockaddr_in)) != msgSize));
+            EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error msg",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize));
             logError(UNKNOWN, "Error on receiving ack");
             exit(EXIT_FAILURE);
           }
@@ -678,7 +703,7 @@ void udpServer(int sUdp, char * buffer, struct sockaddr_in clientaddr_in){
               //check if ack its correct; if not an error is send
               if( blockNumber != ackmsg.blockNumber ){
                 msgSize = fillBufferWithErrMsg(UNKNOWN,"recived blockNumber doesn't match with current blockNumber", buffer);
-                EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&myaddrin,sizeof(struct sockaddr_in)) != msgSize));
+                EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize));
                 logError(UNKNOWN, "recived blockNumber doesn't match with current blockNumber");
                 exit(EXIT_FAILURE);
               }
@@ -693,7 +718,7 @@ void udpServer(int sUdp, char * buffer, struct sockaddr_in clientaddr_in){
             default:
               sprintf(tag,"unrecognized operation in current context %d" ,getMessageTypeWithBuffer(buffer));
               msgSize = fillBufferWithErrMsg(ILLEGAL_OPERATION,tag, buffer);
-              EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&myaddrin,sizeof(struct sockaddr_in)) != msgSize));
+              EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize));
               logError(ILLEGAL_OPERATION, tag);
               exit(EXIT_FAILURE);
             break; 
@@ -721,22 +746,22 @@ void udpServer(int sUdp, char * buffer, struct sockaddr_in clientaddr_in){
         //if error send error msg
         sprintf(tag,"error opening the file %s" ,requestmsg.fileName);
         msgSize = fillBufferWithErrMsg(UNKNOWN,tag, buffer);
-        EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&myaddrin,sizeof(struct sockaddr_in)) != msgSize));
+        EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize));
         logError(UNKNOWN, tag);
         exit(EXIT_FAILURE);
       }
 
       //send ack and increment block
       msgSize = fillBufferWithAckMsg(datamsg.blockNumber, buffer);
-      EXIT_ON_WRONG_VALUE(TRUE,"Error on sending ack for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&myaddrin,sizeof(struct sockaddr_in)) != msgSize));
+      EXIT_ON_WRONG_VALUE(TRUE,"Error on sending ack for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize));
       blockNumber += 1;
       
       while(!endSesion){
       //recive block
-      msgSize = reciveUdpMsg(s,buffer,myaddrin);
+      msgSize = reciveUdpMsg(s,buffer,&clientaddr_in);
       if(msgSize < 0){
         msgSize = fillBufferWithErrMsg(UNKNOWN,"Error on reciving block", buffer);
-        EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error msg",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&myaddrin,sizeof(struct sockaddr_in)) != msgSize));
+        EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error msg",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize));
         logError(UNKNOWN, "Error on reciving block");
         exit(EXIT_FAILURE);
       }
@@ -750,7 +775,7 @@ void udpServer(int sUdp, char * buffer, struct sockaddr_in clientaddr_in){
           //check if block number is the correct one
           if(datamsg.blockNumber != blockNumber ){
             msgSize = fillBufferWithErrMsg(UNKNOWN,"UNKNOWN", buffer);
-              EXIT_ON_WRONG_VALUE(TRUE,"recived blockNumber doesn't match with current blockNumber",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&myaddrin,sizeof(struct sockaddr_in)) != msgSize));
+              EXIT_ON_WRONG_VALUE(TRUE,"recived blockNumber doesn't match with current blockNumber",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize));
               logError(UNKNOWN, "recived blockNumber doesn't match with current blockNumber");
               exit(EXIT_FAILURE);
           }
@@ -759,7 +784,7 @@ void udpServer(int sUdp, char * buffer, struct sockaddr_in clientaddr_in){
           if(-1 == writeResult){
             sprintf(tag,"error writing the file %s" ,requestmsg.fileName);
             msgSize = fillBufferWithErrMsg(DISK_FULL,tag, buffer);
-              EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&myaddrin,sizeof(struct sockaddr_in)) != msgSize));
+              EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize));
               logError(DISK_FULL, tag);
               exit(EXIT_FAILURE);
           }
@@ -778,7 +803,7 @@ void udpServer(int sUdp, char * buffer, struct sockaddr_in clientaddr_in){
         default:
               sprintf(tag,"unrecognized operation in current context %d" ,getMessageTypeWithBuffer(buffer));
               msgSize = fillBufferWithErrMsg(ILLEGAL_OPERATION,tag, buffer);
-              EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&myaddrin,sizeof(struct sockaddr_in)) != msgSize));
+              EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize));
               logError(ILLEGAL_OPERATION, tag);
               exit(EXIT_FAILURE);
         break; 
@@ -786,20 +811,12 @@ void udpServer(int sUdp, char * buffer, struct sockaddr_in clientaddr_in){
 
       //send ack
       msgSize = fillBufferWithAckMsg(datamsg.blockNumber, buffer);
-      EXIT_ON_WRONG_VALUE(TRUE,"Error on sending ack for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&myaddrin,sizeof(struct sockaddr_in)) != msgSize));
+      EXIT_ON_WRONG_VALUE(TRUE,"Error on sending ack for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize));
 
       //log received data 
-      //logs(requestmsg.fileName,hostName, hostIp, "TCP", port, blockNumber, LOG_WRITE);
+      logs(requestmsg.fileName,hostName, hostIp, "UDP", port, blockNumber, LOG_WRITE);
     }
   }
-
-    /* Now, shutdown the connection for further sends.
-    * This will cause the server to receive an end-of-file
-    * condition after it has received all the requests that
-    * have just been sent, indicating that we will not be
-    * sending any further requests.
-    */
-    EXIT_ON_WRONG_VALUE(-1,"unable to shutdown socket",shutdown(s, 1));
 
   fclose(f);
   close(s);
