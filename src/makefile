@@ -1,8 +1,8 @@
 CC=gcc
 CFLAGS=-g
 COFLAGS=-g -c
-OBJ= utils/msgUtils.o
-SERVER_IP = 192.168.70.1
+OBJ= msgUtils.o
+SERVER_IP = olivo.fis.usal.es
 
 #only for olivo
 LIBS= -lsocket -lnsl
@@ -11,8 +11,7 @@ all: server client removeCompilationWaste
 
 run: server client removeCompilationWaste
 		./server &
-		./client $(SERVER_IP) UDP w test.mp3 &
-		./client $(SERVER_IP) UDP r test.mp4 &
+		./client $(SERVER_IP) UDP r bible.txt &
 
 runServer: server removeCompilationWaste
 		clear
@@ -29,12 +28,12 @@ clean:
 	clear
 
 removeCompilationWaste:
-		rm utils/*.o
+		rm *.o
 
 server: server.c utils/utils.h $(OBJ)
-	$(CC) $(CFLAGS) server.c $(OBJ) -o server
+	$(CC) $(CFLAGS) server.c $(OBJ) $(LIBS) -o server
 client: client.c utils/utils.h $(OBJ) 
-	$(CC) $(CFLAGS) client.c $(OBJ) -o client
+	$(CC) $(CFLAGS) client.c $(OBJ) $(LIBS) -o client
 
 msgUtils.o: utils/msgUtils.c utils/msgUtils.h utils/utils.h
-	$(CC) $(COFLAGS) utils/msgUtils.c
+	$(CC) $(COFLAGS) $(LIBS) utils/msgUtils.c

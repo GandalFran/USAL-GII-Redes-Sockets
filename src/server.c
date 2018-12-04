@@ -244,10 +244,63 @@ int main(int argc, char * argv[]){
                * null terminated.
                */
               buffer[cc]='\0';
+
+		//nines
+
+logIssue("STARTED NINES");
+		/*    struct in_addr reqaddr; 
+		    struct hostent *hp;  
+		    int nc, errcode;
+
+		    struct addrinfo hints, *res;
+
+		  int addrlen;
+
+		    addrlen = sizeof(struct sockaddr_in);
+
+		      memset (&hints, 0, sizeof (hints));
+		      hints.ai_family = AF_INET;
+		    errcode = getaddrinfo (buffer, NULL, &hints, &res);
+		    if (errcode != 0){
+		    /* Name was not found.  Return a
+		     * special value signifying the error. 
+		    reqaddr.s_addr = ADDRNOTFOUND;
+		      }
+		    else {
+		     Copy address of host into the return buffer. 
+		    reqaddr = ((struct sockaddr_in *) res->ai_addr)->sin_addr;
+		  }
+		     freeaddrinfo(res);*/
+
+logIssue("ENDED NINES");
+logIssue("STARTED NEW SOCKET");
+		  //create new port (efimero) (soket + bind)
+		  int s;
+		  struct sockaddr_in myaddrin;
+
+		  myaddrin.sin_family = AF_INET;
+		  myaddrin.sin_port = 0;
+		  myaddrin.sin_addr.s_addr = INADDR_ANY;
+
+		  /* Create the socket UDP. */
+		  s = socket (AF_INET, SOCK_DGRAM, 0);
+		  if (s == -1) {
+		    logIssue(" unable to create socket UDP\n");
+		    exit(1);
+		     }
+		  /* Bind the server's address to the socket. */
+		  if (bind(s, (struct sockaddr *) &myaddrin, sizeof(struct sockaddr_in)) == -1) {
+		    logIssue(" unable to bind address UDP\n");
+		    exit(1);
+		      }
+EXIT_ON_WRONG_VALUE(-1,"unable to read socket address", getsockname(s, (struct sockaddr *)&myaddrin, &addrlen));
+
+logIssue("ENDED NEW SOCKET");
+
               pid_t serverInstancePid;
               EXIT_ON_WRONG_VALUE(-1,"unable to fork tcp server instance",serverInstancePid = fork());
               if(0 == serverInstancePid){
-                  udpServer (s_UDP, buffer, clientaddr_in);
+                  udpServer (s, buffer, clientaddr_in);
                   exit(EXIT_SUCCESS);
               }else{
 		continue;
@@ -534,7 +587,7 @@ void tcpServer(int s, struct sockaddr_in clientaddr_in){
   logs(requestmsg.fileName,hostName, hostIp, "TCP", port, 0, LOG_END);
 }
 
-#define TIMEOUT 5
+#define TIMEOUT 60
 int reciveUdpMsg(int s, char * buffer, struct sockaddr_in * addr){
   int i=0,j;
   memset(buffer,0,sizeof(buffer));
@@ -563,7 +616,7 @@ int reciveUdpMsg(int s, char * buffer, struct sockaddr_in * addr){
 }
 
 
-void udpServer(int sUdp, char * buffer, struct sockaddr_in clientaddr_in){
+void udpServer(int s, char * buffer, struct sockaddr_in clientaddr_in){
    char tag[1000];
 
   int port;
@@ -583,55 +636,8 @@ void udpServer(int sUdp, char * buffer, struct sockaddr_in clientaddr_in){
   int msgSize, readSize;
   bool endSesion = FALSE;
 
-//nines
-    struct in_addr reqaddr; /* for requested host's address */
-    struct hostent *hp;   /* pointer to host info for requested host */
-    int nc, errcode;
+logIssue("STARTED UDP");
 
-    struct addrinfo hints, *res;
-
-  int addrlen;
-
-    addrlen = sizeof(struct sockaddr_in);
-
-      memset (&hints, 0, sizeof (hints));
-      hints.ai_family = AF_INET;
-    /* Treat the message as a string containing a hostname. */
-      /* Esta funci�n es la recomendada para la compatibilidad con IPv6 gethostbyname queda obsoleta. */
-    errcode = getaddrinfo (buffer, NULL, &hints, &res);
-    if (errcode != 0){
-    /* Name was not found.  Return a
-     * special value signifying the error. */
-    reqaddr.s_addr = ADDRNOTFOUND;
-      }
-    else {
-    /* Copy address of host into the return buffer. */
-    reqaddr = ((struct sockaddr_in *) res->ai_addr)->sin_addr;
-  }
-     freeaddrinfo(res);
-
-
-  //create new port (efimero) (soket + bind)
-  int s;
-  struct sockaddr_in myaddrin;
-
-  myaddrin.sin_family = AF_INET;
-  myaddrin.sin_port = 0;
-  myaddrin.sin_addr.s_addr = INADDR_ANY;
-
-  /* Create the socket UDP. */
-  s = socket (AF_INET, SOCK_DGRAM, 0);
-  if (s == -1) {
-    logIssue(" unable to create socket UDP\n");
-    exit(1);
-     }
-  /* Bind the server's address to the socket. */
-  if (bind(s, (struct sockaddr *) &myaddrin, sizeof(struct sockaddr_in)) == -1) {
-    logIssue(" unable to bind address UDP\n");
-    exit(1);
-      }
-
-EXIT_ON_WRONG_VALUE(-1,"unable to read socket address", getsockname(s, (struct sockaddr *)&myaddrin, &addrlen));
 
 //PROTOCOLO EN SI
   requestmsg = fillReadMsgWithBuffer(buffer);
@@ -666,7 +672,7 @@ EXIT_ON_WRONG_VALUE(-1,"unable to read socket address", getsockname(s, (struct s
         //if error send error msg 
         sprintf(tag,"server couln't found %s" ,requestmsg.fileName);
         msgSize = fillBufferWithErrMsg(UNKNOWN, tag, buffer);
-        EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&myaddrin,sizeof(struct sockaddr_in)) != msgSize));
+        EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize));
         logError(UNKNOWN, tag);
         exit(EXIT_FAILURE);
       }
