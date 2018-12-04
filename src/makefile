@@ -10,8 +10,8 @@ LIBS= -lsocket -lnsl
 all: server client removeCompilationWaste
 
 run: server client removeCompilationWaste
-		./server &
 		./client $(SERVER_IP) UDP r bible.txt &
+		./client $(SERVER_IP) UDP w test.mp3 &
 
 runServer: server removeCompilationWaste
 		clear
@@ -31,9 +31,9 @@ removeCompilationWaste:
 		rm *.o
 
 server: server.c utils/utils.h $(OBJ)
-	$(CC) $(CFLAGS) server.c $(OBJ) $(LIBS) -o server
+	$(CC) $(CFLAGS) server.c $(OBJ) -o server
 client: client.c utils/utils.h $(OBJ) 
-	$(CC) $(CFLAGS) client.c $(OBJ) $(LIBS) -o client
+	$(CC) $(CFLAGS) client.c $(OBJ) -o client
 
 msgUtils.o: utils/msgUtils.c utils/msgUtils.h utils/utils.h
-	$(CC) $(COFLAGS) $(LIBS) utils/msgUtils.c
+	$(CC) $(COFLAGS) utils/msgUtils.c
