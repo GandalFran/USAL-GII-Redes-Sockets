@@ -12,15 +12,25 @@
 
 #include<stdio.h>
 
+#define READ_FILES_FOLDER "readedFiles"
+
+
 #define TIME_STRING_SIZE 100
 #define LOG_MESSAGE_SIZE 1000
-s
 
-#define READ_FILES_FOLDER "readedFiles"
 #define LOG_FOLDER "log"
-
-#define SERVER_LOG "peticiones.log"
+#define SERVER_LOG "log/peticiones.log"
 #define CLIENT_LOG_EXT ".txt"
+
+#define LOG_START_READ 0 
+#define LOG_START_WRITE 1 
+#define LOG_READ 2
+#define LOG_WRITE 3 
+#define LOG_END 4
+
+typedef enum {TCP_MODE, UDP_MODE}ProtocolMode;
+#define MODE_STR(mode) ( ((mode) == TCP_MODE) ? ("TCP"):("UDP") ) 
+
 
 #define PORT 8455
 #define TIMEOUT 10

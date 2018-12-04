@@ -37,13 +37,6 @@ do{                                              		    	                        
 }while(0)
 
 
-
-#define LOG_START_READ 0 
-#define LOG_START_WRITE 1 
-#define LOG_READ 2
-#define LOG_WRITE 3 
-#define LOG_END 4
-
 void logError(char * hostName, int port, int errorCode, char * errormsg);
 void logc(char * hostName, int port, char * fileName, int block, int mode);
 

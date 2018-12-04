@@ -60,7 +60,7 @@ errMsg fillErrWithBuffer(char * buffer){
 
 
 int fillBufferWithReadMsg(bool isRead,char * fileName, char * buffer){
-	memset(buffer,0,sizeof(buffer));
+	memset(buffer,0,TAM_BUFFER);
 
 	uint16_t header = isRead ? READ_TYPE : WRITE_TYPE;
 	char mode[] = OCTET_MODE;
@@ -72,7 +72,7 @@ int fillBufferWithReadMsg(bool isRead,char * fileName, char * buffer){
 	return (4 + sizeof(fileName) + sizeof(mode));
 }
 int fillBufferWithDataMsg(int blockNumber, char * data, size_t dataSize,char * buffer){
-	memset(buffer,0,sizeof(buffer));
+	memset(buffer,0,TAM_BUFFER);
 
 	uint16_t header = DATA_TYPE;
 	memcpy(buffer,&header,sizeof(uint16_t));
@@ -82,7 +82,7 @@ int fillBufferWithDataMsg(int blockNumber, char * data, size_t dataSize,char * b
 	return 5 + dataSize;
 }
 int fillBufferWithAckMsg(int blockNumber, char * buffer){
-	memset(buffer,0,sizeof(buffer));
+	memset(buffer,0,TAM_BUFFER);
 
 	uint16_t header = ACK_TYPE;
 	memcpy(buffer,&header,sizeof(uint16_t));
@@ -91,7 +91,7 @@ int fillBufferWithAckMsg(int blockNumber, char * buffer){
 	return 4;
 }
 int fillBufferWithErrMsg(errorMsgCodes errorcode, char * errorMsg, char * buffer){
-	memset(buffer,0,sizeof(buffer));
+	memset(buffer,0,TAM_BUFFER);
 
 	uint16_t header = ERR_TYPE;
 	memcpy(buffer,&header,sizeof(uint16_t));
@@ -99,28 +99,4 @@ int fillBufferWithErrMsg(errorMsgCodes errorcode, char * errorMsg, char * buffer
 	memcpy(&(buffer[4]),errorMsg,strlen(errorMsg));
 
 	return 5 + sizeof(errorMsg);
-}
-
-int check_timeout(int s, char *buffer, struct sockaddr_in clientaddr_in, socklen_t addrlen){
-    fd_set f;
-    int value;
-    struct timeval time;
-    
-    // set up the file descriptor set
-    FD_ZERO(&f);
-    FD_SET(s, &f);
-    
-    // set up the struct timeval for the timeout
-    time.tv_sec = TIME_OUT;
-    time.tv_usec = 0;
-    
-    // wait until timeout or data received
-    value = select(s+1, &f, NULL, NULL, &time); //Sirve para esperar hasta que haya algo que recibir
-    if (value == 0){
-        return -2; // timeout!
-    } else if (value == -1){
-        return -1; // error
-    }
-    
-    return recvfrom(s,buffer,TAM_BUFFER,0,(struct sockaddr *)&clientaddr_in,&addrlen);
 }
