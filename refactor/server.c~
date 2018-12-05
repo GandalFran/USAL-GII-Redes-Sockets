@@ -799,6 +799,14 @@ logIssue("STARTED UDP");
   logs(requestmsg.fileName,hostName, hostIp, "UDP", port, 0, LOG_END);
 }
 
+void SIGTERMHandler(int ss){
+    end = TRUE;
+}
+
+void SIGALRMHandler(int ss){
+	logError(0, "the timeout passed");
+	exit(EXIT_SUCCESS);
+}
 
 //=================================================================================================
 

@@ -7,22 +7,22 @@ SERVER_IP = 192.168.70.1
 #only for olivo
 LIBS= -lsocket -lnsl
 
-all: TFTPserver TFTPclient removeCompilationWaste
+all: server TFTPclient removeCompilationWaste
 
-run: TFTPserver TFTPclient removeCompilationWaste
-		./TFTPserver &
+run: server TFTPclient removeCompilationWaste
+		./server &
 		./TFTPclient $(SERVER_IP) UDP r test.mp3 &
-runServer: TFTPserver removeCompilationWaste
+runServer: server removeCompilationWaste
 		clear
-		./TFTPserver
+		./server
 
 runClient: TFTPclient removeCompilationWaste
 		clear
 		./TFTPclient $(SERVER_IP) UDP r bible.txt
 clean:
 	rm TFTPclient
-	rm TFTPserver
-	killall -9 TFTPserver
+	rm server
+	killall -9 server
 	rm log/*
 	rm readedFiles/*
 	clear
@@ -30,8 +30,8 @@ clean:
 removeCompilationWaste:
 		rm *.o
 
-TFTPserver: TFTPserver.c utils.h $(OBJ)
-	$(CC) $(CFLAGS) TFTPserver.c $(OBJ) -o TFTPserver
+server: server.c utils.h $(OBJ)
+	$(CC) $(CFLAGS) server.c $(OBJ) -o server
 TFTPclient: TFTPclient.c utils.h $(OBJ) 
 	$(CC) $(CFLAGS) TFTPclient.c $(OBJ) -o TFTPclient
 

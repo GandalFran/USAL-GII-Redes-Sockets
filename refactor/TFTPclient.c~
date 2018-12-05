@@ -572,6 +572,8 @@ void TFTPclientWriteMode(ProtocolMode mode,char * hostName, char * file){
 }
 
 
+har * file, char * host, char * ip, char * protocol, int clientPort, int blockNumber, int mode
+
 void logConnection(char * hostName, char * fileName, char * protocol, int block, int mode){
 	char path[20];
 	char toLog[LOG_MESSAGE_SIZE];
@@ -581,19 +583,19 @@ void logConnection(char * hostName, char * fileName, char * protocol, int block,
 
 	switch(mode){
 		case LOG_START_READ:  
-			sprintf(toLog,"\n[%s][HOST: %s][PROTOCOL: %s][FILE: %s][STARTED READ]", getDateAndTime(), hostName, protocol, fileName); 
+			sprintf(toLog,"\n[%s][HOST: %s][PROTOCOL: %s][PORT: %d][FILE: %s][STARTED READ]", getDateAndTime(), hostName, protocol, port, fileName); 
 		break;
 		case LOG_START_WRITE: 
-			sprintf(toLog,"\n[%s][HOST: %s][PROTOCOL: %s][FILE: %s][STARTED WRITE]", getDateAndTime(), hostName, protocol, fileName); 
+			sprintf(toLog,"\n[%s][HOST: %s][PROTOCOL: %s][PORT: %d][FILE: %s][STARTED WRITE]", getDateAndTime(), hostName, protocol, port, fileName); 
 		break;
 		case LOG_READ:        
-			sprintf(toLog,"\n[%s][HOST: %s][PROTOCOL: %s][FILE: %s][RECIVED: %d]", getDateAndTime(), hostName, protocol, fileName, block); 
+			sprintf(toLog,"\n[%s][HOST: %s][PROTOCOL: %s][PORT: %d][FILE: %s][RECIVED: %d]", getDateAndTime(), hostName, protocol, port, fileName, block); 
 		break;
 		case LOG_WRITE:       
-			sprintf(toLog,"\n[%s][HOST: %s][PROTOCOL: %s][FILE: %s][SEND: %d]", getDateAndTime(), hostName, protocol, fileName, block); 
+			sprintf(toLog,"\n[%s][HOST: %s][PROTOCOL: %s][PORT: %d][FILE: %s][SEND: %d]", getDateAndTime(), hostName, protocol, port, fileName, block); 
 		break;
 		case LOG_END:         
-			sprintf(toLog,"\n[%s][HOST: %s][PROTOCOL: %s][FILE: %s][SUCCED]", getDateAndTime(), hostName, protocol, fileName); 
+			sprintf(toLog,"\n[%s][HOST: %s][PROTOCOL: %s][PORT: %d][FILE: %s][SUCCED]", getDateAndTime(), hostName, protocol, port, fileName); 
 		break;
 	}
 
