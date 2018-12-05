@@ -303,7 +303,7 @@ int main(int argc, char * argv[]){
                     	/* The daemon needs to remember
                      	* to close the new accept socket
                      	* after forking the child.  This
-                    	 * prevents the daemon from running
+                    	 * prevents the daemon from running 
                     	 * out of file descriptor space.  It
                     	 * also means that when the server
                     	 * closes the socket, that it will
@@ -375,10 +375,10 @@ int main(int argc, char * argv[]){
     				exit(EXIT_FAILURE);
   				  }
   				  if(requestmsg.header == READ_TYPE){
-  					TFTPserverReadMode(UDP_MODE,s_UDP,requestmsg.fileName,clientaddr_in,port,hostIp,hostName);
+  					TFTPserverReadMode(UDP_MODE,s,requestmsg.fileName,clientaddr_in,port,hostIp,hostName);
   					exit(EXIT_SUCCESS);
   				  }else{
-  					TFTPserverWriteMode(UDP_MODE,s_UDP,requestmsg.fileName,clientaddr_in,port,hostIp,hostName);
+  					TFTPserverWriteMode(UDP_MODE,s,requestmsg.fileName,clientaddr_in,port,hostIp,hostName);
   					exit(EXIT_SUCCESS);
   				  }
                   exit(EXIT_SUCCESS);
