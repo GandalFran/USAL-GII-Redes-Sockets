@@ -240,11 +240,11 @@ int main(int argc, char * argv[]){
 					msgSize = recv(s_TCP,buffer,TAM_BUFFER,0);
 					if(msgSize <= 0){
 						msgSize = fillBufferWithErrMsg(UNKNOWN,"error on receiving client request", buffer);
- 						if(sendMsg(TCP_MODE,s_TCP, buffer, msgSize, clientaddr_in) != msgSize){
-							fprintf(stderr,"\nError on sending error msg");
-							close(ls_TCP);
-							exit(EXIT_FAILURE);
-						}
+                        if(send(s_TCP, buffer, msgSize, 0) != msgSize){
+                            fprintf(stderr,"\nError on sending error msg");
+                            close(ls_TCP);
+                            exit(EXIT_FAILURE);
+                        }
 						logError(hostName, hostIp, requestmsg.fileName,"TCP", port, -1, "error on receiving client request");
 						exit(EXIT_FAILURE);
 					}
@@ -253,11 +253,11 @@ int main(int argc, char * argv[]){
 					//if the msg isnt a request send error 
 					if(READ_TYPE != requestmsg.header && WRITE_TYPE != requestmsg.header){
  						msgSize = fillBufferWithErrMsg(ILLEGAL_OPERATION,"error on client request header: isn't read or write", buffer);
-						if(sendMsg(TCP_MODE,s_TCP, buffer, msgSize, clientaddr_in) != msgSize){
-							fprintf(stderr,"\nError on sending error for block");
-							close(ls_TCP);
-							exit(EXIT_FAILURE);
-						}
+                        if(send(s_TCP, buffer, msgSize, 0) != msgSize){
+                            fprintf(stderr,"\nError on sending error for block");
+                            close(ls_TCP);
+                            exit(EXIT_FAILURE);
+                        }
  						logError(hostName, hostIp, "","TCP", port,ILLEGAL_OPERATION, "error on client request header: isn't read or write");
 						exit(EXIT_FAILURE);
 					}
@@ -316,10 +316,11 @@ int main(int argc, char * argv[]){
 				//if the msg isnt a request send error 
 				if(READ_TYPE != requestmsg.header && WRITE_TYPE != requestmsg.header){
  					msgSize = fillBufferWithErrMsg(ILLEGAL_OPERATION,"error on client request header: isn't read or write", buffer);
-   					if(sendMsg(TCP_MODE,s, buffer, msgSize, clientaddr_in) != msgSize){
-						fprintf(stderr,"\nError on sending error for block");
-						exit(EXIT_FAILURE);
-					}
+                    if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,&addrlen) != msgSize){
+                        fprintf(stderr,"\nError on sending error for block");
+                        close(ls_TCP);
+                        exit(EXIT_FAILURE);
+                    }
 					logError(hostName, hostIp, "","UDP", port,ILLEGAL_OPERATION, "error on client request header: isn't read or write");
 					exit(EXIT_FAILURE);
 				}
@@ -349,7 +350,7 @@ void SIGALRMHandler(int ss){
 	exit(EXIT_SUCCESS);
 }
 
-void TFTPserverReadMode(ProtocolMode mode,int s, char * hostName, char * hostIp, int port, char * fileName, struct sockaddr_in cientaddr_in){
+void TFTPserverReadMode(ProtocolMode mode,int s, char * hostName, char * hostIp, int port, char * fileName, struct sockaddr_in clientaddr_in){
 	bool endSesion = FALSE;
 
 	rwMsg requestMsg;
@@ -383,7 +384,17 @@ void TFTPserverReadMode(ProtocolMode mode,int s, char * hostName, char * hostIp,
 	//send error if file not found
 	if(!fileExists){
 		msgSize = fillBufferWithErrMsg(FILE_NOT_FOUND,"server coundn't found the requested file", buffer);
-		EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));
+        if(mode==TCP_MODE){
+            if(send(s, buffer, msgSize, 0) != msgSize){
+                fprintf(stderr,"\nError on sending error for block");
+                exit(EXIT_FAILURE);
+            }
+        }else{
+            if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,&addrlen) != msgSize){
+                fprintf(stderr,"\nError on sending error for block");
+                exit(EXIT_FAILURE);
+            }
+        }
 		logError(hostName, hostIp, fileName,MODE_STR(mode), port, FILE_NOT_FOUND, "server coundn't found the requested file");
 		exit(EXIT_FAILURE);
 	}
@@ -392,7 +403,17 @@ void TFTPserverReadMode(ProtocolMode mode,int s, char * hostName, char * hostIp,
 	if(NULL == (f = fopen(fileName,"rb"))){
 		//if error send error msg 
 		msgSize = fillBufferWithErrMsg(UNKNOWN, "server couldn't open the file", buffer);
-		EXIT_ON_WRONG_VALUE(TRUE,"Error on sending error for block",(send(s, buffer, msgSize, 0) != msgSize));
+        if(mode==TCP_MODE){
+            if(send(s, buffer, msgSize, 0) != msgSize){
+                fprintf(stderr,"\nError on sending error for block");
+                exit(EXIT_FAILURE);
+            }
+        }else{
+            if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,&addrlen) != msgSize){
+                fprintf(stderr,"\nError on sending error for block");
+                exit(EXIT_FAILURE);
+            }
+        }
 		logError(hostName, hostIp, fileName,MODE_STR(mode), port,-1, "server couldn't open file");
 		exit(EXIT_FAILURE);
 	}
@@ -420,21 +441,20 @@ void TFTPserverReadMode(ProtocolMode mode,int s, char * hostName, char * hostIp,
 				exit(EXIT_FAILURE);
 			}
 		}else{
-			if(msgSize != sendto(s, buffer, msgSize, 0,(struct sockaddr *)&cientaddr_in,sizeof(struct sockaddr_in))){
+			if(msgSize != sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in))){
 				close(s);			
 				fclose(f);			
 				logError(hostName, hostIp, fileName,MODE_STR(mode), port,-1, "Unable to send data block");
 				exit(EXIT_FAILURE);
 			}
 		}
-
 		//wait for ack 
 		if(mode  == TCP_MODE){
 			msgSize = recv(s, buffer, TAM_BUFFER, 0);
 			if(msgSize < TAM_BUFFER && msgSize>0) buffer[msgSize] = '\0';
 		}else{    
 			alarm(TIMEOUT);
-			msgSize = recvfrom(s, buffer, TAM_BUFFER, 0,(struct sockaddr*)&cientaddr_in,&addrlen);
+			msgSize = recvfrom(s, buffer, TAM_BUFFER, 0,(struct sockaddr*)&clientaddr_in,&addrlen);
 			if(msgSize < TAM_BUFFER) buffer[msgSize] = '\0';
 		}	
 		if(msgSize <= 0){
@@ -485,7 +505,7 @@ void TFTPserverReadMode(ProtocolMode mode,int s, char * hostName, char * hostIp,
 	logConnection(hostName, hostIp,fileName, MODE_STR(mode), port, 0, LOG_END);
 }
 
-void TFTPserverWriteMode(ProtocolMode mode,int s, char * hostName, char * hostIp, int port, char * fileName, struct sockaddr_in cientaddr_in){	
+void TFTPserverWriteMode(ProtocolMode mode,int s, char * hostName, char * hostIp, int port, char * fileName, struct sockaddr_in clientaddr_in){
 
 	bool endSesion = FALSE;
 
@@ -537,7 +557,7 @@ void TFTPserverWriteMode(ProtocolMode mode,int s, char * hostName, char * hostIp
 
 	blockNumber = 0;
 	//send ack and increment block
-	msgSize = fillBufferWithAckMsg(datamsg.blockNumber, buffer);
+	msgSize = fillBufferWithAckMsg(blockNumber, buffer);
 	if(mode == TCP_MODE){
 		if(msgSize != send(s, buffer, msgSize, 0)){
 			close(s);			
@@ -546,7 +566,7 @@ void TFTPserverWriteMode(ProtocolMode mode,int s, char * hostName, char * hostIp
 			exit(EXIT_FAILURE);
 		}
 	}else{
-		if(msgSize != sendto(s, buffer, msgSize, 0,(struct sockaddr *)&cientaddr_in,sizeof(struct sockaddr_in))){
+		if(msgSize != sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in))){
 			close(s);			
 			fclose(f);			
 			logError(hostName, hostIp, fileName,MODE_STR(mode), port, -1 , "Unable to send ack");
@@ -564,7 +584,7 @@ void TFTPserverWriteMode(ProtocolMode mode,int s, char * hostName, char * hostIp
 		  	if(msgSize < TAM_BUFFER && msgSize>0) buffer[msgSize] = '\0';
 		}else{    
 			alarm(TIMEOUT);
-			msgSize = recvfrom(s, buffer, TAM_BUFFER, 0,(struct sockaddr*)&cientaddr_in,&addrlen);
+			msgSize = recvfrom(s, buffer, TAM_BUFFER, 0,(struct sockaddr*)&clientaddr_in,&addrlen);
 			if(msgSize < TAM_BUFFER) buffer[msgSize] = '\0';
 		}	
 		if(msgSize <= 0){
@@ -615,7 +635,7 @@ void TFTPserverWriteMode(ProtocolMode mode,int s, char * hostName, char * hostIp
 		}
 
 		//send ack
-		msgSize = fillBufferWithAckMsg(datamsg.blockNumber, buffer);
+		msgSize = fillBufferWithAckMsg(blockNumber, buffer);
 		if(mode == TCP_MODE){
 			if(msgSize != send(s, buffer, msgSize, 0)){
 				close(s);			
@@ -624,7 +644,7 @@ void TFTPserverWriteMode(ProtocolMode mode,int s, char * hostName, char * hostIp
 				exit(EXIT_FAILURE);
 			}
 		}else{
-			if(msgSize != sendto(s, buffer, msgSize, 0,(struct sockaddr *)&cientaddr_in,sizeof(struct sockaddr_in))){
+			if(msgSize != sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in))){
 				close(s);			
 				fclose(f);			
 				logError(hostName, hostIp, fileName,MODE_STR(mode), port, -1 , "Unable to send ack");

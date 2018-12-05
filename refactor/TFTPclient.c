@@ -36,8 +36,8 @@ void TFTPclientReadMode(ProtocolMode mode,char * hostName, char * file);
 void TFTPclientWriteMode(ProtocolMode mode,char * hostName, char * file);
 
 const char * getDateAndTime();
-void logError(char * hostName, int port, char * fileName, char * protocol, int errorCode, char * errormsg);
-void logConnection(char * hostName, int port, char * fileName, char * protocol, int block, int mode);
+void logError(char * hostName,int port, char * fileName, char * protocol, int errorCode, char * errormsg);
+void logConnection(char * hostName,int port, char * fileName, char * protocol, int block, int mode);
 
 int main(int argc, char * argv[]){
 	sigset_t signalSet;
@@ -572,7 +572,7 @@ void TFTPclientWriteMode(ProtocolMode mode,char * hostName, char * file){
 }
 
 
-void logConnection(char * hostName, char * fileName, char * protocol, int block, int mode){
+void logConnection(char * hostName,int port, char * fileName, char * protocol, int block, int mode){
 	char path[20];
 	char toLog[LOG_MESSAGE_SIZE];
 
