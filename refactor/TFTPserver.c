@@ -316,7 +316,7 @@ int main(int argc, char * argv[]){
 				//if the msg isnt a request send error 
 				if(READ_TYPE != requestmsg.header && WRITE_TYPE != requestmsg.header){
  					msgSize = fillBufferWithErrMsg(ILLEGAL_OPERATION,"error on client request header: isn't read or write", buffer);
-                    if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,&addrlen) != msgSize){
+                    if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize){
                         fprintf(stderr,"\nError on sending error for block");
                         close(ls_TCP);
                         exit(EXIT_FAILURE);
@@ -390,7 +390,7 @@ void TFTPserverReadMode(ProtocolMode mode,int s, char * hostName, char * hostIp,
                 exit(EXIT_FAILURE);
             }
         }else{
-            if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,&addrlen) != msgSize){
+            if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize){
                 fprintf(stderr,"\nError on sending error for block");
                 exit(EXIT_FAILURE);
             }
@@ -409,7 +409,7 @@ void TFTPserverReadMode(ProtocolMode mode,int s, char * hostName, char * hostIp,
                 exit(EXIT_FAILURE);
             }
         }else{
-            if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,&addrlen) != msgSize){
+            if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize){
                 fprintf(stderr,"\nError on sending error for block");
                 exit(EXIT_FAILURE);
             }
@@ -573,7 +573,6 @@ void TFTPserverWriteMode(ProtocolMode mode,int s, char * hostName, char * hostIp
 			exit(EXIT_FAILURE);
 		}
 	}
-	blockNumber += 1;
 
 	endSesion = 0;
 	while(!endSesion){
@@ -597,6 +596,8 @@ void TFTPserverWriteMode(ProtocolMode mode,int s, char * hostName, char * hostIp
 		//act according to type
 		switch(getMessageTypeWithBuffer(buffer)){
 			case DATA_TYPE:
+        //increment block number 
+        blockNumber += 1;
 				datamsg = fillDataWithBuffer(msgSize,buffer);
 				//check if block number is the correct one
 				if(datamsg.blockNumber != blockNumber ){
@@ -616,8 +617,6 @@ void TFTPserverWriteMode(ProtocolMode mode,int s, char * hostName, char * hostIp
 				//check if the block is the last -- size less than 512 bytes
 				if(DATA_SIZE(msgSize) < MSG_DATA_SIZE)
 					endSesion = TRUE;
-				//increment block number 
-				blockNumber += 1;
 			break;
 			case ERR_TYPE: 
 				errmsg = fillErrWithBuffer(buffer);

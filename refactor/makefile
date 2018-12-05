@@ -2,7 +2,7 @@ CC=gcc
 CFLAGS=-g
 COFLAGS=-g -c
 OBJ= msgUtils.o
-SERVER_IP = 192.168.1.37
+SERVER_IP = 192.168.2.246
 
 #only for olivo
 LIBS= -lsocket -lnsl
@@ -11,7 +11,7 @@ all: TFTPserver TFTPclient removeCompilationWaste
 
 run: TFTPserver TFTPclient removeCompilationWaste
 		./TFTPserver &
-		./TFTPclient $(SERVER_IP) TCP w test.mp3 &
+		./TFTPclient $(SERVER_IP) UDP w test.mp3 &
 runServer: server removeCompilationWaste
 		clear
 		./server
