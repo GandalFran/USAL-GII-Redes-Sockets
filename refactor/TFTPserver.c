@@ -42,18 +42,6 @@ void logError(char * hostName, char * hostIp, char * fileName, char * protocol, 
 void logConnection(char * hostName, char * hostIp, char * fileName, char * protocol, int port, int block, int mode);
 
 
-#define EXIT_ON_WRONG_VALUE(wrongValue, errorMsg, returnValue)                          \
-do{                                              		    	                              \
-    if((returnValue) == (wrongValue)){		    	                                        \
-        char errorTag[200];                                                             \
-        sprintf(errorTag, "\n[%s:%d:%s]%s", __FILE__, __LINE__, __FUNCTION__,errorMsg); \
-        logError("", "", "", "", -3, 1, "asdf");		    	                                            \
-        raise(SIGTERM);		    	                                                        \
-        exit(0);                                                                        \
-    }		    	                                                                          \
-}while(0)
-
-
 void logIssue(char * asdf){
 
 }
@@ -64,8 +52,15 @@ void redefineSignal(int signal, void(*function)(int)){
   ss.sa_handler=function;
   ss.sa_flags=0;
 
-  EXIT_ON_WRONG_VALUE(-1,"signal error",sigfillset(&ss.sa_mask));
-  EXIT_ON_WRONG_VALUE(-1,"signal error",sigaction(signal,&ss,NULL));
+  if(-1 == sigfillset(&ss.sa_mask)){
+    fprintf(stderr,"\nSignal error");
+    exit(EXIT_FAILURE);
+  }
+    
+  if(-1 == sigaction(signal,&ss,NULL)){
+    fprintf(stderr,"\nSignal error");
+    exit(EXIT_FAILURE);
+  }
 }
 
 
@@ -143,7 +138,7 @@ int main(int argc, char * argv[]){
 	/* Bind the listen address to the socket. */
 	if (bind(ls_TCP, (const struct sockaddr *) &myaddr_in, sizeof(struct sockaddr_in)) == -1) {
 		perror(argv[0]);
-		logIssue(": unable to bind address TCP\n");
+        fprintf(stderr,": unable to bind address TCP\n");
 		exit(1);
 	}
 	/* Initiate the listen on the socket so remote users
@@ -151,19 +146,19 @@ int main(int argc, char * argv[]){
 	* is the largest currently supported. */
 	if (listen(ls_TCP, 5) == -1) {
 		perror(argv[0]);
-		logIssue("%s: unable to listen on socket\n");
+        fprintf(stderr,": unable to listen on socket\n");
 		exit(1);
 	}
 
 	/* Create the socket UDP. */
 	s_UDP = socket (AF_INET, SOCK_DGRAM, 0);
 	if (s_UDP == -1) {
-		logIssue("%s: unable to create socket UDP\n");
+        fprintf(stderr,": unable to create socket UDP\n");
 		exit(1);
 	}
 	/* Bind the server's address to the socket. */
 	if (bind(s_UDP, (struct sockaddr *) &myaddr_in, sizeof(struct sockaddr_in)) == -1) {
-		logIssue("%s: unable to bind address UDP\n");
+        fprintf(stderr,": unable to bind address UDP\n");
 		exit(1);
 	}
 
@@ -214,59 +209,58 @@ int main(int argc, char * argv[]){
 				exit(EXIT_FAILURE);
 			}
 			if(0 == serverInstancePid){
-//TODO tabulate -1
-				close(ls_TCP); /* Close the listen socket inherited from the daemon. */
+                close(ls_TCP); /* Close the listen socket inherited from the daemon. */
  				//obtain the host information to start communicacion with remote host
-  					if( getnameinfo((struct sockaddr *)&clientaddr_in,sizeof(clientaddr_in),hostName,sizeof(hostName),NULL,0,0) ){
- 						if(NULL == inet_ntop(AF_INET,&clientaddr_in.sin_addr,hostName,sizeof(hostName))){
-							fprintf(stderr,"\nError inet_ntop");
-							close(ls_TCP);
-							exit(EXIT_FAILURE);
-						}
-					}
-					port = ntohs(clientaddr_in.sin_port);
-					strcpy(hostIp, inet_ntoa(clientaddr_in.sin_addr));
+                if( getnameinfo((struct sockaddr *)&clientaddr_in,sizeof(clientaddr_in),hostName,sizeof(hostName),NULL,0,0) ){
+                    if(NULL == inet_ntop(AF_INET,&clientaddr_in.sin_addr,hostName,sizeof(hostName))){
+                        fprintf(stderr,"\nError inet_ntop");
+                        close(ls_TCP);
+                        exit(EXIT_FAILURE);
+                    }
+                }
+                port = ntohs(clientaddr_in.sin_port);
+                strcpy(hostIp, inet_ntoa(clientaddr_in.sin_addr));
 
- 					//set opMode
-  					lngr.l_onoff = 1;
-					lngr.l_linger= 1;
-					if(-1 == setsockopt(s_TCP,SOL_SOCKET,SO_LINGER,&lngr,sizeof(lngr))){
-						fprintf(stderr,"\n%s",hostName);
-						close(ls_TCP);
-						exit(EXIT_FAILURE);
-					}
+                //set opMode
+                lngr.l_onoff = 1;
+                lngr.l_linger= 1;
+                if(-1 == setsockopt(s_TCP,SOL_SOCKET,SO_LINGER,&lngr,sizeof(lngr))){
+                    logError(hostName, hostIp, requestmsg.fileName, "TCP", port, -1, "\nError on making setsockopt");
+                    close(ls_TCP);
+                    exit(EXIT_FAILURE);
+                }
 
-					//read client request to know if is required read or write
-					msgSize = recv(s_TCP,buffer,TAM_BUFFER,0);
-					if(msgSize <= 0){
-						msgSize = fillBufferWithErrMsg(UNKNOWN,"error on receiving client request", buffer);
-                        if(send(s_TCP, buffer, msgSize, 0) != msgSize){
-                            fprintf(stderr,"\nError on sending error msg");
-                            close(ls_TCP);
-                            exit(EXIT_FAILURE);
-                        }
-						logError(hostName, hostIp, requestmsg.fileName,"TCP", port, -1, "error on receiving client request");
-						exit(EXIT_FAILURE);
-					}
+                //read client request to know if is required read or write
+                msgSize = recv(s_TCP,buffer,TAM_BUFFER,0);
+                if(msgSize <= 0){
+                    msgSize = fillBufferWithErrMsg(UNKNOWN,"error on receiving client request", buffer);
+                    if(send(s_TCP, buffer, msgSize, 0) != msgSize){
+                        logError(hostName, hostIp, requestmsg.fileName, "TCP", port, -1, "\nError on sending error msg");
+                        close(ls_TCP);
+                        exit(EXIT_FAILURE);
+                    }
+                    logError(hostName, hostIp, requestmsg.fileName,"TCP", port, -1, "error on receiving client request");
+                    exit(EXIT_FAILURE);
+                }
 
-					requestmsg = fillReadMsgWithBuffer(buffer);
-					//if the msg isnt a request send error 
-					if(READ_TYPE != requestmsg.header && WRITE_TYPE != requestmsg.header){
- 						msgSize = fillBufferWithErrMsg(ILLEGAL_OPERATION,"error on client request header: isn't read or write", buffer);
-                        if(send(s_TCP, buffer, msgSize, 0) != msgSize){
-                            fprintf(stderr,"\nError on sending error for block");
-                            close(ls_TCP);
-                            exit(EXIT_FAILURE);
-                        }
- 						logError(hostName, hostIp, "","TCP", port,ILLEGAL_OPERATION, "error on client request header: isn't read or write");
-						exit(EXIT_FAILURE);
-					}
+                requestmsg = fillReadMsgWithBuffer(buffer);
+                //if the msg isnt a request send error
+                if(READ_TYPE != requestmsg.header && WRITE_TYPE != requestmsg.header){
+                    msgSize = fillBufferWithErrMsg(ILLEGAL_OPERATION,"error on client request header: isn't read or write", buffer);
+                    if(send(s_TCP, buffer, msgSize, 0) != msgSize){
+                        logError(hostName, hostIp, requestmsg.fileName, "TCP", port, -1, "\nError on sending error for block");
+                        close(ls_TCP);
+                        exit(EXIT_FAILURE);
+                    }
+                    logError(hostName, hostIp, "","TCP", port,ILLEGAL_OPERATION, "error on client request header: isn't read or write");
+                    exit(EXIT_FAILURE);
+                }
 
-					if(requestmsg.header == READ_TYPE)
-						TFTPserverReadMode(TCP_MODE,s_TCP,hostName,hostIp,port,requestmsg.fileName,clientaddr_in);
-					else
-						TFTPserverWriteMode(TCP_MODE,s_TCP,hostName,hostIp,port,requestmsg.fileName,clientaddr_in);
-					exit(EXIT_SUCCESS);
+                if(requestmsg.header == READ_TYPE)
+                    TFTPserverReadMode(TCP_MODE,s_TCP,hostName,hostIp,port,requestmsg.fileName,clientaddr_in);
+                else
+                    TFTPserverWriteMode(TCP_MODE,s_TCP,hostName,hostIp,port,requestmsg.fileName,clientaddr_in);
+                exit(EXIT_SUCCESS);
                   		
 			}else{
                   		close(s_TCP);
@@ -292,12 +286,12 @@ int main(int argc, char * argv[]){
 			/* Create the socket UDP. */
 			s = socket (AF_INET, SOCK_DGRAM, 0);
 			if (s == -1) {
-				logIssue(" unable to create socket UDP\n");
+                fprintf(stderr," unable to bind address UDP\n");
 				exit(1);
 		    	}
 			/* Bind the server's address to the socket. */
 			if (bind(s, (struct sockaddr *) &myaddrin, sizeof(struct sockaddr_in)) == -1) {
-				logIssue(" unable to bind address UDP\n");
+                fprintf(stderr," unable to bind address UDP\n");
 				exit(1);
 		      	}
 		      	
@@ -317,7 +311,7 @@ int main(int argc, char * argv[]){
 				if(READ_TYPE != requestmsg.header && WRITE_TYPE != requestmsg.header){
  					msgSize = fillBufferWithErrMsg(ILLEGAL_OPERATION,"error on client request header: isn't read or write", buffer);
                     if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize){
-                        fprintf(stderr,"\nError on sending error for block");
+                        logError(hostName, hostIp, requestmsg.fileName, "UDP", port, -1, "\nError on sending error for block");
                         close(ls_TCP);
                         exit(EXIT_FAILURE);
                     }
@@ -386,12 +380,12 @@ void TFTPserverReadMode(ProtocolMode mode,int s, char * hostName, char * hostIp,
 		msgSize = fillBufferWithErrMsg(FILE_NOT_FOUND,"server coundn't found the requested file", buffer);
         if(mode==TCP_MODE){
             if(send(s, buffer, msgSize, 0) != msgSize){
-                fprintf(stderr,"\nError on sending error for block");
+                logError(hostName, hostIp, fileName, MODE_STR(mode), port, -1, "\nError on sending error for block");
                 exit(EXIT_FAILURE);
             }
         }else{
             if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize){
-                fprintf(stderr,"\nError on sending error for block");
+                logError(hostName, hostIp, fileName, MODE_STR(mode), port, -1, "\nError on sending error for block");
                 exit(EXIT_FAILURE);
             }
         }
@@ -405,12 +399,12 @@ void TFTPserverReadMode(ProtocolMode mode,int s, char * hostName, char * hostIp,
 		msgSize = fillBufferWithErrMsg(UNKNOWN, "server couldn't open the file", buffer);
         if(mode==TCP_MODE){
             if(send(s, buffer, msgSize, 0) != msgSize){
-                fprintf(stderr,"\nError on sending error for block");
+                logError(hostName, hostIp, fileName, MODE_STR(mode), port, -1, "\nError on sending error for block");
                 exit(EXIT_FAILURE);
             }
         }else{
             if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize){
-                fprintf(stderr,"\nError on sending error for block");
+                logError(hostName, hostIp, fileName, MODE_STR(mode), port, -1, "\nError on sending error for block");
                 exit(EXIT_FAILURE);
             }
         }
@@ -471,7 +465,6 @@ void TFTPserverReadMode(ProtocolMode mode,int s, char * hostName, char * hostIp,
 				if( blockNumber != ackmsg.blockNumber ){
 					close(s);			
 					fclose(f);
-					fprintf(stderr, "%d %d\n",blockNumber,ackmsg.blockNumber );
 					logError(hostName, hostIp, fileName,MODE_STR(mode), port, -1 , "Recived ACK for block which doesn't matches with current");
 					exit(EXIT_FAILURE);
 				}
