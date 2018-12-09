@@ -27,6 +27,8 @@
 #define LOG_READ 2
 #define LOG_WRITE 3 
 #define LOG_END 4
+#define LOG_END_READ 5
+#define LOG_END_WRITE 6
 
 typedef enum {TCP_MODE, UDP_MODE}ProtocolMode;
 #define MODE_STR(mode) ( ((mode) == TCP_MODE) ? ("TCP"):("UDP") ) 

@@ -11,7 +11,10 @@ all: TFTPserver TFTPclient removeCompilationWaste
 
 run: TFTPserver TFTPclient removeCompilationWaste
 		./TFTPserver &
-		./TFTPclient $(SERVER_IP) UDP w test.mp3 &
+		./TFTPclient $(SERVER_IP) UDP r test.mp4 &
+		./TFTPclient $(SERVER_IP) TCP r test.mp3 &
+		./TFTPclient $(SERVER_IP) UDP w test1.mp3 &
+		./TFTPclient $(SERVER_IP) TCP w test1.mp4 &
 runServer: server removeCompilationWaste
 		clear
 		./server
