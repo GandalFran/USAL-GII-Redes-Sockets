@@ -98,5 +98,5 @@ int fillBufferWithErrMsg(errorMsgCodes errorcode, char * errorMsg, char * buffer
 	memcpy(&(buffer[2]),&errorcode,sizeof(uint16_t));
 	memcpy(&(buffer[4]),errorMsg,strlen(errorMsg));
 
-	return 5 + sizeof(errorMsg);
+	return 5 + strlen(errorMsg);
 }
