@@ -200,7 +200,6 @@ int main(int argc, char * argv[]){
 		s_mayor = (ls_TCP > s_UDP) ? ls_TCP : s_UDP;
 		numfds = select(s_mayor+1, &readmask, (fd_set *)0, (fd_set *)0, NULL);
 		if(EINTR ==errno){
-			logError("UNKNOWN", "UNKNOWN","UNKNOWN", "UNKNOWN", -1, -1,"\nClosing server because of signal recived in select");
 	        close(s_UDP);
 	        close(ls_TCP);
 			exit(EXIT_FAILURE);
