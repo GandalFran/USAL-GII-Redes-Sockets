@@ -617,9 +617,6 @@ void TFTPserverWriteMode(ProtocolMode mode,int s, char * hostName, char * hostIp
 	char finalPath[30];
 	sprintf(finalPath,"%s/%s",SERVER_FILES_FOLDER,fileName);
 
-	//log the connection
-	//logConnection(hostName, hostIp,fileName, MODE_STR(mode), port, 0, LOG_START_READ);
-
 	//check if file exists
 	bool fileExists = (access( finalPath, F_OK ) != -1) ? TRUE : FALSE;
 
@@ -659,9 +656,10 @@ void TFTPserverWriteMode(ProtocolMode mode,int s, char * hostName, char * hostIp
 	}
 
 	blockNumber = 0;
-	//send ack and increment block
-	msgSize = fillBufferWithAckMsg(blockNumber, buffer);
+	//send ack and wait for data blcok 
 	if(mode == TCP_MODE){
+		//send ack 
+		msgSize = fillBufferWithAckMsg(blockNumber, buffer);
 		if(msgSize != send(s, buffer, msgSize, 0)){
             msgSize = fillBufferWithErrMsg(UNKNOWN, "Unable to send ack", buffer);
             if(send(s, buffer, msgSize, 0) != msgSize){
@@ -672,47 +670,51 @@ void TFTPserverWriteMode(ProtocolMode mode,int s, char * hostName, char * hostIp
 			fclose(f);
 			exit(EXIT_FAILURE);
 		}
+		//wait for data block 
+		msgSize = recv(s, buffer, TAM_BUFFER, 0);
+		  if(msgSize < TAM_BUFFER && msgSize>0) buffer[msgSize] = '\0';
 	}else{
-		if(msgSize != sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in))){
-            msgSize = fillBufferWithErrMsg(UNKNOWN, "Unable to send ack", buffer);
+		nRetries = 0;
+		do{
+			//send ack 
+			msgSize = fillBufferWithAckMsg(blockNumber, buffer);
+			if(msgSize != sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in))){
+	            msgSize = fillBufferWithErrMsg(UNKNOWN, "Unable to send ack", buffer);
+	            if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize){
+	                logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1, "\nError sending error response message");
+	            }
+				logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1 , "Unable to send ack");
+				close(s);			
+				fclose(f);
+				exit(EXIT_FAILURE);
+			}
+			//wait for data block 
+			timeOutPassed = FALSE;
+			alarm(TIMEOUT);
+			msgSize = recvfrom(s, buffer, TAM_BUFFER, 0,(struct sockaddr*)&clientaddr_in,&addrlen);
+			if(msgSize < TAM_BUFFER && msgSize>0) buffer[msgSize] = '\0';
+		}while(timeOutPassed);
+		alarm(0);
+	}
+	if(msgSize <= 0){
+        msgSize = fillBufferWithErrMsg(UNKNOWN, "Unable to recive data block", buffer);
+        if(mode==TCP_MODE){
+            if(send(s, buffer, msgSize, 0) != msgSize){
+                logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1, "\nError sending error response message");
+            }
+        }else{
             if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize){
                 logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1, "\nError sending error response message");
             }
-			logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1 , "Unable to send ack");
-			close(s);			
-			fclose(f);
-			exit(EXIT_FAILURE);
-		}
+        }
+		logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1 , "Unable to recive data block");
+		close(s);			
+		fclose(f);
+		exit(EXIT_FAILURE);	
 	}
 
 	endSesion = 0;
 	while(!endSesion){
-
-		//recive data block
-		if(mode  == TCP_MODE){
-			msgSize = recv(s, buffer, TAM_BUFFER, 0);
-		  	if(msgSize < TAM_BUFFER && msgSize>0) buffer[msgSize] = '\0';
-		}else{    
-			alarm(TIMEOUT);
-			msgSize = recvfrom(s, buffer, TAM_BUFFER, 0,(struct sockaddr*)&clientaddr_in,&addrlen);
-			if(msgSize < TAM_BUFFER) buffer[msgSize] = '\0';
-		}	
-		if(msgSize <= 0){
-            msgSize = fillBufferWithErrMsg(UNKNOWN, "Unable to recive data block", buffer);
-            if(mode==TCP_MODE){
-                if(send(s, buffer, msgSize, 0) != msgSize){
-                    logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1, "\nError sending error response message");
-                }
-            }else{
-                if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize){
-                    logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1, "\nError sending error response message");
-                }
-            }
-			logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1 , "Unable to recive data block");
-			close(s);			
-			fclose(f);
-			exit(EXIT_FAILURE);	
-		}
 
 		//act according to type
 		switch(getMessageTypeWithBuffer(buffer)){
@@ -777,33 +779,91 @@ void TFTPserverWriteMode(ProtocolMode mode,int s, char * hostName, char * hostIp
 			break; 
 		}
 
-		//send ack
-		msgSize = fillBufferWithAckMsg(blockNumber, buffer);
-		if(mode == TCP_MODE){
-			if(msgSize != send(s, buffer, msgSize, 0)){
-                msgSize = fillBufferWithErrMsg(UNKNOWN, "Unable to send ack", buffer);
-                if(send(s, buffer, msgSize, 0) != msgSize){
-                    logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1, "\nError sending error response message");
-                }
-				logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1 , "Unable to send ack");
-				close(s);			
-				fclose(f);
-				exit(EXIT_FAILURE);
+		if(!endSesion){
+			//send ack and recive data block
+			msgSize = fillBufferWithAckMsg(blockNumber, buffer);
+			if(mode == TCP_MODE){
+				//send ack
+				if(msgSize != send(s, buffer, msgSize, 0)){
+	                msgSize = fillBufferWithErrMsg(UNKNOWN, "Unable to send ack", buffer);
+	                if(send(s, buffer, msgSize, 0) != msgSize){
+	                    logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1, "\nError sending error response message");
+	                }
+					logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1 , "Unable to send ack");
+					close(s);			
+					fclose(f);
+					exit(EXIT_FAILURE);
+				}
+				//recive next data block
+				msgSize = recv(s, buffer, TAM_BUFFER, 0);
+			  	if(msgSize < TAM_BUFFER && msgSize>0) buffer[msgSize] = '\0';
+			}else{
+				nRetries = 0;
+				do{
+					//send ack
+					if(msgSize != sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in))){
+		                msgSize = fillBufferWithErrMsg(UNKNOWN, "Unable to send ack", buffer);
+		                if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize){
+		                    logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1, "\nError sending error response message");
+		                }
+						logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1 , "Unable to send ack");
+						close(s);			
+						fclose(f);
+						exit(EXIT_FAILURE);
+					}
+					//recive next data block
+					timeOutPassed = FALSE;
+					alarm(TIMEOUT);
+					msgSize = recvfrom(s, buffer, TAM_BUFFER, 0,(struct sockaddr*)&clientaddr_in,&addrlen);
+					if(msgSize < TAM_BUFFER) buffer[msgSize] = '\0';
+				}while(timeOutPassed);
 			}
-		}else{
-			if(msgSize != sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in))){
-                msgSize = fillBufferWithErrMsg(UNKNOWN, "Unable to send ack", buffer);
-                if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize){
-                    logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1, "\nError sending error response message");
-                }
-				logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1 , "Unable to send ack");
+			if(msgSize <= 0){
+	            msgSize = fillBufferWithErrMsg(UNKNOWN, "Unable to recive data block", buffer);
+	            if(mode==TCP_MODE){
+	                if(send(s, buffer, msgSize, 0) != msgSize){
+	                    logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1, "\nError sending error response message");
+	                }
+	            }else{
+	                if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize){
+	                    logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1, "\nError sending error response message");
+	                }
+	            }
+				logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1 , "Unable to recive data block");
 				close(s);			
 				fclose(f);
-				exit(EXIT_FAILURE);
+				exit(EXIT_FAILURE);	
 			}
 		}
 				
 	}
+
+	//send last ack
+	msgSize = fillBufferWithAckMsg(blockNumber, buffer);
+	if(mode == TCP_MODE){
+		if(msgSize != send(s, buffer, msgSize, 0)){
+            msgSize = fillBufferWithErrMsg(UNKNOWN, "Unable to send ack", buffer);
+            if(send(s, buffer, msgSize, 0) != msgSize){
+                logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1, "\nError sending error response message");
+            }
+			logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1 , "Unable to send ack");
+			close(s);			
+			fclose(f);
+			exit(EXIT_FAILURE);
+		}
+	}else{
+		if(msgSize != sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in))){
+            msgSize = fillBufferWithErrMsg(UNKNOWN, "Unable to send ack", buffer);
+            if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize){
+                logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1, "\nError sending error response message");
+            }
+			logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1 , "Unable to send ack");
+			close(s);			
+			fclose(f);
+			exit(EXIT_FAILURE);
+		}
+	}
+
 
 	close(s);
 	fclose(f);

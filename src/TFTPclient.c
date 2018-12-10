@@ -354,7 +354,7 @@ void TFTPclientReadMode(ProtocolMode mode,char * hostName, char * file){
 			//log received data 
 			logConnection(hostName, port, file, MODE_STR(mode), datamsg.blockNumber, LOG_READ);
 		}
-		
+
 	}
 
 	//send last ack
@@ -500,22 +500,43 @@ void TFTPclientWriteMode(ProtocolMode mode,char * hostName, char * file){
 	//log the connection
 	logConnection(hostName, port, file, MODE_STR(mode), port, LOG_START_WRITE);
 		
-	//send request to start protocol
-	msgSize = fillBufferWithReadMsg(FALSE,file, buffer);
+	//send request to start protocol and wait for ack 0
 	if(mode == TCP_MODE){
+		//send request 
+		msgSize = fillBufferWithReadMsg(FALSE,file, buffer);
 		if(msgSize != send(s, buffer, msgSize, 0)){
 			close(s);			
 			fclose(f);
 			logError(hostName, port, file, "TCP", -1 , "Unable to send first request");
 			exit(EXIT_FAILURE);	
 		}
+		//wait for ack
+		msgSize = recv(s, buffer, TAM_BUFFER, 0);
+		if(msgSize < TAM_BUFFER && msgSize>0) buffer[msgSize] = '\0';
 	}else{
-		if(msgSize != sendto(s, buffer, msgSize, 0,(struct sockaddr *)&servaddr_in,sizeof(struct sockaddr_in)) ){
-			close(s);			
-			fclose(f);
-			logError(hostName, port, file, "UDP", -1 , "Unable to send first request");
-			exit(EXIT_FAILURE);	
-		}
+		nRetries = 0;
+		do{
+			//send request
+			msgSize = fillBufferWithReadMsg(FALSE,file, buffer);
+			if(msgSize != sendto(s, buffer, msgSize, 0,(struct sockaddr *)&servaddr_in,sizeof(struct sockaddr_in)) ){
+				close(s);			
+				fclose(f);
+				logError(hostName, port, file, "UDP", -1 , "Unable to send first request");
+				exit(EXIT_FAILURE);	
+			}
+			//wait for ack
+			timeOutPassed = FALSE;
+			alarm(TIMEOUT);
+			msgSize = recvfrom(s, buffer, TAM_BUFFER, 0,(struct sockaddr*)&servaddr_in,&addrlen);
+			if(msgSize < TAM_BUFFER) buffer[msgSize] = '\0';
+		}while(timeOutPassed);
+		alarm(0);
+	}
+	if(msgSize <= 0){
+		close(s);			
+		fclose(f);
+		logError(hostName, port, file, MODE_STR(mode), -1 , "Unable to recive ack");
+		exit(EXIT_FAILURE);	
 	}
 
 	//open the file to write
@@ -531,22 +552,6 @@ void TFTPclientWriteMode(ProtocolMode mode,char * hostName, char * file){
 	blockNumber = 0;
 	endSesion = FALSE;
 	while(!endSesion){
-		//wait for ack 
-		if(mode  == TCP_MODE){
-			msgSize = recv(s, buffer, TAM_BUFFER, 0);
-			if(msgSize < TAM_BUFFER && msgSize>0) buffer[msgSize] = '\0';
-		}else{    
-			alarm(TIMEOUT);
-			msgSize = recvfrom(s, buffer, TAM_BUFFER, 0,(struct sockaddr*)&servaddr_in,&addrlen);
-			if(msgSize < TAM_BUFFER) buffer[msgSize] = '\0';
-		}	
-		if(msgSize <= 0){
-			close(s);			
-			fclose(f);
-			logError(hostName, port, file, MODE_STR(mode), -1 , "Unable to recive ack");
-			exit(EXIT_FAILURE);	
-		}
-
 		switch(getMessageTypeWithBuffer(buffer)){
 			case ACK_TYPE: 
 				ackmsg = fillAckWithBuffer(buffer);
@@ -585,26 +590,47 @@ void TFTPclientWriteMode(ProtocolMode mode,char * hostName, char * file){
 			exit(EXIT_FAILURE);
         }
 
-        //send the readed data block
-        msgSize = fillBufferWithDataMsg(blockNumber,dataBuffer,readSize,buffer);
-		if(mode == TCP_MODE){
+        //send readed data block and wait for ack
+        if(mode == TCP_MODE){
+        	//send readed data block 
+        	msgSize = fillBufferWithDataMsg(blockNumber,dataBuffer,readSize,buffer);
 			if(msgSize != send(s, buffer, msgSize, 0)){
 				close(s);			
 				fclose(f);			
 				logError(hostName, port, file,"TCP", -1 , "Unable to send data block");
 				exit(EXIT_FAILURE);
 			}
-		}else{
-			if(msgSize != sendto(s, buffer, msgSize, 0,(struct sockaddr *)&servaddr_in,sizeof(struct sockaddr_in))){
-				close(s);			
-				fclose(f);			
-				logError(hostName, port, file,"UDP", -1 , "Unable to send data block");
-				exit(EXIT_FAILURE);
-			}
+        	//wait for ack
+			msgSize = recv(s, buffer, TAM_BUFFER, 0);
+			if(msgSize < TAM_BUFFER && msgSize>0) buffer[msgSize] = '\0';
+        }else{
+        	nRetries = 0;
+        	do{
+	        	//send readed data block 
+	        	msgSize = fillBufferWithDataMsg(blockNumber,dataBuffer,readSize,buffer);
+	        	if(msgSize != sendto(s, buffer, msgSize, 0,(struct sockaddr *)&servaddr_in,sizeof(struct sockaddr_in))){
+					close(s);			
+					fclose(f);			
+					logError(hostName, port, file,"UDP", -1 , "Unable to send data block");
+					exit(EXIT_FAILURE);
+				}
+	        	//wait for ack
+	        	timeOutPassed = FALSE;
+				alarm(TIMEOUT);
+				msgSize = recvfrom(s, buffer, TAM_BUFFER, 0,(struct sockaddr*)&servaddr_in,&addrlen);
+				if(msgSize < TAM_BUFFER && msgSize>0) buffer[msgSize] = '\0';
+			}while(timeOutPassed);
+			alarm(0);
+        }	
+		if(msgSize <= 0){
+			close(s);			
+			fclose(f);
+			logError(hostName, port, file, MODE_STR(mode), -1 , "Unable to recive ack");
+			exit(EXIT_FAILURE);	
 		}
 
 		//log received data 
-		logConnection(hostName, port, file, MODE_STR(mode), blockNumber, LOG_WRITE);
+		logConnection(hostName, port, file, MODE_STR(mode), blockNumber-1, LOG_WRITE);
 
 		//check if the file has ended
         if(feof(f))
