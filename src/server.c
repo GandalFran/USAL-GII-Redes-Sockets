@@ -18,8 +18,8 @@
 #include <sys/errno.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include "utils/utils.h"
-#include "utils/msgUtils.h"
+#include "utils.h"
+#include "msgUtils.h"
 
 #define ADDRNOTFOUND	0xffffffff	/* return address for unfound host */
 #define MAXHOST 128
@@ -246,34 +246,6 @@ int main(int argc, char * argv[]){
               buffer[cc]='\0';
 
 		//nines
-
-logIssue("STARTED NINES");
-		/*    struct in_addr reqaddr; 
-		    struct hostent *hp;  
-		    int nc, errcode;
-
-		    struct addrinfo hints, *res;
-
-		  int addrlen;
-
-		    addrlen = sizeof(struct sockaddr_in);
-
-		      memset (&hints, 0, sizeof (hints));
-		      hints.ai_family = AF_INET;
-		    errcode = getaddrinfo (buffer, NULL, &hints, &res);
-		    if (errcode != 0){
-		    /* Name was not found.  Return a
-		     * special value signifying the error. 
-		    reqaddr.s_addr = ADDRNOTFOUND;
-		      }
-		    else {
-		     Copy address of host into the return buffer. 
-		    reqaddr = ((struct sockaddr_in *) res->ai_addr)->sin_addr;
-		  }
-		     freeaddrinfo(res);*/
-
-logIssue("ENDED NINES");
-logIssue("STARTED NEW SOCKET");
 		  //create new port (efimero) (soket + bind)
 		  int s;
 		  struct sockaddr_in myaddrin;
@@ -294,8 +266,6 @@ logIssue("STARTED NEW SOCKET");
 		    exit(1);
 		      }
 EXIT_ON_WRONG_VALUE(-1,"unable to read socket address", getsockname(s, (struct sockaddr *)&myaddrin, &addrlen));
-
-logIssue("ENDED NEW SOCKET");
 
               pid_t serverInstancePid;
               EXIT_ON_WRONG_VALUE(-1,"unable to fork tcp server instance",serverInstancePid = fork());
@@ -587,7 +557,7 @@ void tcpServer(int s, struct sockaddr_in clientaddr_in){
   logs(requestmsg.fileName,hostName, hostIp, "TCP", port, 0, LOG_END);
 }
 
-#define TIMEOUT 60
+
 int reciveUdpMsg(int s, char * buffer, struct sockaddr_in * addr){
   int i=0,j;
   memset(buffer,0,sizeof(buffer));
@@ -829,14 +799,6 @@ logIssue("STARTED UDP");
   logs(requestmsg.fileName,hostName, hostIp, "UDP", port, 0, LOG_END);
 }
 
-void SIGTERMHandler(int ss){
-    end = TRUE;
-}
-
-void SIGALRMHandler(int ss){
-	logError(0, "the timeout passed");
-	exit(EXIT_SUCCESS);
-}
 
 //=================================================================================================
 
@@ -863,7 +825,7 @@ const char * getDateAndTime(){
 
 void logIssue(char * issue){
   char toLog[LOG_MESSAGE_SIZE];
-  FILE*logFile = fopen(SERVER_LOG_PATH,"a+");
+  FILE*logFile = fopen(SERVER_LOG,"a+");
   sprintf(toLog,"\n[%s][ISSUE][%s]",getDateAndTime(),issue);
   fprintf(logFile, "%s",toLog);
   fclose(logFile);
@@ -871,8 +833,8 @@ void logIssue(char * issue){
 
 void logError(int errorcode, char * errorMsg){
 	char toLog[LOG_MESSAGE_SIZE];
-    char error[ENUMERATION_SIZE];
-	FILE*logFile = fopen(SERVER_LOG_PATH,"a+");
+    char error[30];
+	FILE*logFile = fopen(SERVER_LOG,"a+");
     
     switch (errorcode) {
         case 0:
@@ -901,7 +863,7 @@ void logError(int errorcode, char * errorMsg){
 
 void logs(char * file, char * host, char * ip, char * protocol, int clientPort, int blockNumber, int mode){
 	char toLog[LOG_MESSAGE_SIZE];
-	FILE*logFile = fopen(SERVER_LOG_PATH,"a+");
+	FILE*logFile = fopen(SERVER_LOG,"a+");
 
   switch(mode){
     case LOG_START_READ: sprintf(toLog,"\n[%s][Host: %s][IP:%s][Protocol:%s][Port:%d][CONNECTION STARTED][READ MODE]",getDateAndTime(),host, ip, protocol, clientPort); break;
