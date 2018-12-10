@@ -26,9 +26,9 @@ fi
 make
 #run
 ./TFTPserver
-./TFTPclient $SERVER_IP TCP w $FILE1 &
-./TFTPclient $SERVER_IP TCP w $FILE2 &
-./TFTPclient $SERVER_IP TCP r $FILE3 &
-./TFTPclient $SERVER_IP UDP r $FILE4 &
-./TFTPclient $SERVER_IP UDP w $FILE5 &
-./TFTPclient $SERVER_IP UDP r $FILE6 &
+./TFTPclient $SERVER_IP TCP e $FILE1 &
+./TFTPclient $SERVER_IP TCP e $FILE2 &
+./TFTPclient $SERVER_IP TCP l $FILE3 &
+./TFTPclient $SERVER_IP UDP l $FILE4 &
+./TFTPclient $SERVER_IP UDP e $FILE5 &
+./TFTPclient $SERVER_IP UDP l $FILE6 &

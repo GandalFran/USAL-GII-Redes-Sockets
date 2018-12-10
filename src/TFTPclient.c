@@ -24,8 +24,8 @@
 
 #define TCP_ARG "TCP"
 #define UDP_ARG "UDP"
-#define READ_ARG "r"
-#define WRITE_ARG "w"
+#define READ_ARG "l"
+#define WRITE_ARG "e"
 
 bool timeOutPassed;
 int nRetries;
@@ -100,8 +100,13 @@ int main(int argc, char * argv[]){
 }
 
 void SIGALRMHandler(int ss){
-	logError(SIGALRMHostName, SIGALRMPort, SIGALRMFileName, "UDP", -1 , "Timeout passed");
-	exit(EXIT_SUCCESS);
+	if(nRetries<RETRIES){
+		nRetries++;
+		timeOutPassed = TRUE;
+	}else{
+		logError(SIGALRMHostName, SIGALRMPort, SIGALRMFileName, "UDP", -1 , "Timeout passed");
+		exit(EXIT_SUCCESS);
+	}
 }
 
 void TFTPclientReadMode(ProtocolMode mode,char * hostName, char * file){
