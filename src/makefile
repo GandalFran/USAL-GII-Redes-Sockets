@@ -2,40 +2,18 @@ CC=gcc
 CFLAGS=-g
 COFLAGS=-g -c
 OBJ= msgUtils.o
-SERVER_IP = olivo.fis.usal.es
 
-#only for olivo
-LIBS= -lsocket -lnsl
+#LIBS= -lsocket -lnsl
+LIBS= 
 
 all: TFTPserver TFTPclient removeCompilationWaste
 
-run: TFTPserver TFTPclient removeCompilationWaste
-		./TFTPclient $(SERVER_IP) UDP r test.mp4 &
-		./TFTPclient $(SERVER_IP) TCP r test.mp3 &
-		./TFTPclient $(SERVER_IP) UDP w test1.mp3 &
-		./TFTPclient $(SERVER_IP) TCP w test1.mp4 &
-runServer: server removeCompilationWaste
-		clear
-		./server
-
-runClient: TFTPclient removeCompilationWaste
-		clear
-		./TFTPclient $(SERVER_IP) UDP r bible.txt
-clean:
-	rm TFTPclient
-	rm TFTPserver
-	killall -9 TFTPserver
-	rm log/*
-	rm readedFiles/*
-	clear
+TFTPserver: TFTPserver.c utils.h $(OBJ)
+	$(CC) $(CFLAGS) TFTPserver.c $(OBJ) $(LIBS) -o TFTPserver
+TFTPclient: TFTPclient.c utils.h $(OBJ) 
+	$(CC) $(CFLAGS) TFTPclient.c $(OBJ) $(LIBS) -o TFTPclient
+msgUtils.o: msgUtils.c msgUtils.h utils.h
+	$(CC) $(COFLAGS) $(LIBS) msgUtils.c
 
 removeCompilationWaste:
-		rm *.o
-
-TFTPserver: TFTPserver.c utils.h $(OBJ)
-	$(CC) $(CFLAGS) TFTPserver.c $(OBJ) -o TFTPserver
-TFTPclient: TFTPclient.c utils.h $(OBJ) 
-	$(CC) $(CFLAGS) TFTPclient.c $(OBJ) -o TFTPclient
-
-msgUtils.o: msgUtils.c msgUtils.h utils.h
-	$(CC) $(COFLAGS) msgUtils.c
+	rm *.o

@@ -403,31 +403,34 @@ void TFTPserverReadMode(ProtocolMode mode,int s, char * hostName, char * hostIp,
 		SIGALRMport = port;
 	}
 
+	char finalPath[30];
+	sprintf(finalPath,"%s/%s",SERVER_FILES_FOLDER,fileName);
+
 	//log the connection
 	//logConnection(hostName, hostIp,fileName, MODE_STR(mode), port, 0, LOG_START_READ);
 
 	//check if file exists
-	bool fileExists = (access(fileName, F_OK ) != -1) ? TRUE : FALSE;
+	bool fileExists = (access(finalPath, F_OK ) != -1) ? TRUE : FALSE;	
 
 	//send error if file not found
 	if(!fileExists){
 		msgSize = fillBufferWithErrMsg(FILE_NOT_FOUND,"server coundn't found the requested file", buffer);
-        if(mode==TCP_MODE){
-            if(send(s, buffer, msgSize, 0) != msgSize){
-                logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1, "\nError sending error response message");
-            }
-        }else{
-            if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize){
-                logError(hostName, hostIp,fileName, MODE_STR(mode), port,  -1, "\nError sending error response message");
-            }
-        }
+		if(mode==TCP_MODE){
+		    if(send(s, buffer, msgSize, 0) != msgSize){
+		        logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1, "Error sending error response message");
+		    }
+		}else{
+		    if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize){
+		        logError(hostName, hostIp,fileName, MODE_STR(mode), port,  -1, "Error sending error response message");
+		    }
+		}
 		logError(hostName, hostIp,fileName, MODE_STR(mode), port, FILE_NOT_FOUND, "server coundn't found the requested file");
 		close(s);
 		exit(EXIT_FAILURE);
 	}
 
 	//open the request file
-	if(NULL == (f = fopen(fileName,"rb"))){
+	if(NULL == (f = fopen(finalPath,"rb"))){
 		//if error send error msg 
 		msgSize = fillBufferWithErrMsg(UNKNOWN, "server couldn't open file", buffer);
         if(mode==TCP_MODE){
@@ -443,6 +446,7 @@ void TFTPserverReadMode(ProtocolMode mode,int s, char * hostName, char * hostIp,
 		close(s);
 		exit(EXIT_FAILURE);
 	}
+
 
 	blockNumber = 0;
 	endSesion = FALSE;
@@ -501,16 +505,16 @@ void TFTPserverReadMode(ProtocolMode mode,int s, char * hostName, char * hostIp,
 			if(msgSize < TAM_BUFFER && msgSize>0) buffer[msgSize] = '\0';
 		}	
 		if(msgSize <= 0){
-            msgSize = fillBufferWithErrMsg(UNKNOWN, "Unable to recive ack", buffer);
-            if(mode==TCP_MODE){
-                if(send(s, buffer, msgSize, 0) != msgSize){
-                    logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1, "\nError sending error response message");
-                }
-            }else{
-                if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize){
-                    logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1, "\nError sending error response message");
-                }
-            }
+           	    msgSize = fillBufferWithErrMsg(UNKNOWN, "Unable to recive ack", buffer);
+		    if(mode==TCP_MODE){
+		        if(send(s, buffer, msgSize, 0) != msgSize){
+		            logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1, "\nError sending error response message");
+		        }
+		    }else{
+		        if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize){
+		            logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1, "\nError sending error response message");
+		        }
+		    }
 			logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1, "Unable to recive ack");
 			close(s);			
 			fclose(f);
@@ -591,24 +595,33 @@ void TFTPserverWriteMode(ProtocolMode mode,int s, char * hostName, char * hostIp
 		SIGALRMport = port;
 	}
 
+	char finalPath[30];
+	sprintf(finalPath,"%s/%s",SERVER_FILES_FOLDER,fileName);
+
 	//log the connection
 	//logConnection(hostName, hostIp,fileName, MODE_STR(mode), port, 0, LOG_START_READ);
 
 	//check if file exists
-	bool fileExists = (access( fileName, F_OK ) != -1) ? TRUE : FALSE;
+	bool fileExists = (access( finalPath, F_OK ) != -1) ? TRUE : FALSE;
 
 	//send error if file alredy exsits
-	/*if(fileExists){
-		sprintf(tag,"the requested file alerady exists: %s" ,requestmsg.fileName);
-		msgSize = fillBufferWithErrMsg(FILE_ALREADY_EXISTS,tag, buffer);
-		EXIT_ON_WRONG_VALUE(TRUE,"Error becuase file exists",(send(s, buffer, msgSize, 0) != msgSize));
-		logError(hostName, hostIp,fileName, MODE_STR(mode), port, FILE_ALREADY_EXISTS, tag);
+	if(fileExists){
+		msgSize = fillBufferWithErrMsg(FILE_ALREADY_EXISTS,"The requested file already exists", buffer);
+		if(mode==TCP_MODE){
+		    if(send(s, buffer, msgSize, 0) != msgSize){
+		        logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1, "\nError sending error message");
+		    }
+		}else{
+		    if(sendto(s, buffer, msgSize, 0,(struct sockaddr *)&clientaddr_in,sizeof(struct sockaddr_in)) != msgSize){
+		        logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1, "\nError sending error message");
+		    }
+		}
+		logError(hostName, hostIp,fileName, MODE_STR(mode), port, FILE_ALREADY_EXISTS, "The requested file already exists");
+		close(s);
 		exit(EXIT_FAILURE);
-	}*/
+	}
 
 	//open the file to write
-	char finalPath[30];
-	sprintf(finalPath,"%s/%s",READ_FILES_FOLDER,fileName);
 	if(NULL == (f = fopen(finalPath,"wb"))){
 		//if error send error msg 
         msgSize = fillBufferWithErrMsg(UNKNOWN, "client couldn't open file", buffer);
