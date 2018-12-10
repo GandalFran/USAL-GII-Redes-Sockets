@@ -74,6 +74,7 @@ int main(int argc, char * argv[]){
 	end = FALSE;
 
 	//Block all signals and redefine sigterm and sigalarm
+	redefineSignal(SIGCHLD,	SIG_IGN);
 	redefineSignal(SIGTERM,SIGTERMHandler);
 	redefineSignal(SIGALRM,SIGALRMHandler);
 
@@ -86,6 +87,10 @@ int main(int argc, char * argv[]){
 		exit(EXIT_FAILURE);
 	}
 	if(-1 == sigdelset(&signalSet,SIGALRM)){
+		fprintf(stderr,"\nSignal error");
+		exit(EXIT_FAILURE);
+	}
+	if(-1 == sigdelset(&signalSet,SIGCHLD)){
 		fprintf(stderr,"\nSignal error");
 		exit(EXIT_FAILURE);
 	}
