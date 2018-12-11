@@ -1,4 +1,0 @@
-GET /index.html k
-GET /docencia.html k
-GET /ejemplo.html k
-DAME /index.htm

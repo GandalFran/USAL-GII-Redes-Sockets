@@ -1,5 +1,0 @@
-[Mon Dec 19 10:57:01 2016] 127.0.0.1 (localhost) UDP p:43220
-[Mon Dec 19 10:57:01 2016] 127.0.0.1 Peticion: GET /index.html 200 OK
-[Mon Dec 19 10:57:01 2016] 127.0.0.1 Peticion: GET /docencia.html 200 OK
-[Mon Dec 19 10:57:01 2016] 127.0.0.1 Peticion: GET /ejemplo.html 404 Not found
-[Mon Dec 19 10:57:01 2016] 127.0.0.1 Peticion: DAME /index.htm 501 Not implemented
