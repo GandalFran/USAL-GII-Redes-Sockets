@@ -30,8 +30,8 @@ typedef enum{LOG_START_READ, LOG_START_WRITE, LOG_READ, LOG_WRITE, LOG_END, LOG_
 
 #define MODE_STR(mode) ( ((mode) == TCP_MODE) ? ("TCP"):("UDP") ) 
 
-#define PORT 8457
-#define TIMEOUT 1000
+#define PORT 8455
+#define TIMEOUT 10
 #define RETRIES 3
 
 #define TAM_BUFFER 1024

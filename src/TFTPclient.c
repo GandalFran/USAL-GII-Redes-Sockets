@@ -33,6 +33,9 @@ int nRetries;
 char SIGALRMHostName[30];
 char SIGALRMFileName[30];
 int SIGALRMPort;
+int SIGALRMs;
+int SIGALRMs;
+FILE* SIGALRMf;
 void SIGALRMHandler(int ss);
 
 void TFTPclientReadMode(ProtocolMode mode,char * hostName, char * file);
@@ -104,7 +107,10 @@ void SIGALRMHandler(int ss){
 		nRetries++;
 		timeOutPassed = TRUE;
 	}else{
-		logError(SIGALRMHostName, SIGALRMPort, SIGALRMFileName, "UDP", -1 , "Timeout passed");
+		logError(SIGALRMHostName,SIGALRMPort,SIGALRMFileName, "UDP", UNKNOWN, "Timeout passed");
+		close(SIGALRMs);
+		if(NULL != SIGALRMf)
+			fclose(SIGALRMf);
 		exit(EXIT_SUCCESS);
 	}
 }
@@ -220,7 +226,9 @@ void TFTPclientReadMode(ProtocolMode mode,char * hostName, char * file){
 	if(mode == UDP_MODE){
 		strcpy(SIGALRMHostName,hostName);
 		strcpy(SIGALRMFileName,file);
-		SIGALRMPort = ntohs(myaddr_in.sin_port);;
+		SIGALRMPort = ntohs(myaddr_in.sin_port);
+		SIGALRMf = NULL;
+		SIGALRMs = s;
 	}
 
 	//log the connection
@@ -273,6 +281,10 @@ void TFTPclientReadMode(ProtocolMode mode,char * hostName, char * file){
 		exit(EXIT_FAILURE);
 	}
 
+	if(mode == UDP_MODE){
+		SIGALRMf = f;
+	}
+
 	endSesion = 0;
 	blockNumber = 0;
 	while(!endSesion){
@@ -311,7 +323,7 @@ void TFTPclientReadMode(ProtocolMode mode,char * hostName, char * file){
 			default:	
 				close(s);			
 				fclose(f);			
-				logError(hostName, port, file, MODE_STR(mode), -1 , "Unrecognized operation in current context");
+				logError(hostName, port, file, MODE_STR(mode), ILLEGAL_OPERATION, "Unrecognized operation in current context");
 				exit(EXIT_FAILURE);
 			break; 
 		}
@@ -499,7 +511,9 @@ void TFTPclientWriteMode(ProtocolMode mode,char * hostName, char * file){
 	if(mode == UDP_MODE){
 		strcpy(SIGALRMHostName,hostName);
 		strcpy(SIGALRMFileName,file);
-		SIGALRMPort = ntohs(myaddr_in.sin_port);;
+		SIGALRMPort = ntohs(myaddr_in.sin_port);
+		SIGALRMf = NULL;
+		SIGALRMs = s;
 	}
 
 	//log the connection
@@ -552,6 +566,10 @@ void TFTPclientWriteMode(ProtocolMode mode,char * hostName, char * file){
 		close(s);	
 		logError(hostName, port, file, MODE_STR(mode), -1, "client couldn't open file");
 		exit(EXIT_FAILURE);
+	}
+
+	if(mode == UDP_MODE){
+		SIGALRMf = f;
 	}
 
 	blockNumber = 0;

@@ -33,6 +33,9 @@ char SIGALRMhostName[80];
 char SIGALRMhostIp[80];
 char SIGALRMfileName[80];
 int SIGALRMport;
+int SIGALRMs;
+FILE * SIGALRMf;
+
 void SIGALRMHandler(int ss);
 void SIGTERMHandler(int ss);
 
@@ -387,11 +390,15 @@ void SIGTERMHandler(int ss){
 }
 
 void SIGALRMHandler(int ss){
+
 	if(nRetries<RETRIES){
 		nRetries++;
 		timeOutPassed = TRUE;
 	}else{
-		logError(SIGALRMhostName, SIGALRMhostIp,SIGALRMfileName, "UDP", SIGALRMport, -1, "Timeout passed");
+		logError(SIGALRMhostName, SIGALRMhostIp,SIGALRMfileName, "UDP", SIGALRMport, UNKNOWN, "Timeout passed");
+		close(SIGALRMs);
+		if(NULL != SIGALRMf)
+			fclose(SIGALRMf);
 		exit(EXIT_FAILURE);
 	}
 }
@@ -418,6 +425,8 @@ void TFTPserverReadMode(ProtocolMode mode,int s, char * hostName, char * hostIp,
 		strcpy(SIGALRMhostIp, hostIp);
 		strcpy(SIGALRMfileName, fileName);
 		SIGALRMport = port;
+		SIGALRMf = NULL;
+		SIGALRMs = s;
 	}
 
 	char finalPath[30];
@@ -462,6 +471,9 @@ void TFTPserverReadMode(ProtocolMode mode,int s, char * hostName, char * hostIp,
 		exit(EXIT_FAILURE);
 	}
 
+	if(mode == UDP_MODE){
+		SIGALRMf = f;
+	}
 
 	blockNumber = 0;
 	endSesion = FALSE;
@@ -470,6 +482,7 @@ void TFTPserverReadMode(ProtocolMode mode,int s, char * hostName, char * hostIp,
 		memset(dataBuffer,0,MSG_DATA_SIZE);
 		readSize = fread(dataBuffer, 1, MSG_DATA_SIZE, f);
 		if(-1 == readSize){
+			msgSize = fillBufferWithErrMsg(UNKNOWN,"Error reading the file",buffer);
             if(mode==TCP_MODE){
                 if(send(s, buffer, msgSize, 0) != msgSize){
                     logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1, "\nError sending error response message");
@@ -488,7 +501,6 @@ void TFTPserverReadMode(ProtocolMode mode,int s, char * hostName, char * hostIp,
 		//send the readed data block and recive ack
 		if(mode == TCP_MODE){
 			//send block
-			msgSize = fillBufferWithDataMsg(blockNumber,dataBuffer,readSize,buffer);
 			msgSize = fillBufferWithDataMsg(blockNumber,dataBuffer,readSize,buffer);
 			if(msgSize != send(s, buffer, msgSize, 0)){
                 msgSize = fillBufferWithErrMsg(UNKNOWN, "Unable to send data block", buffer);
@@ -567,7 +579,7 @@ void TFTPserverReadMode(ProtocolMode mode,int s, char * hostName, char * hostIp,
 				blockNumber += 1;
 			break;
 			default:	
-                msgSize = fillBufferWithErrMsg(UNKNOWN, "Unrecognized operation in current context", buffer);
+                msgSize = fillBufferWithErrMsg(ILLEGAL_OPERATION, "Unrecognized operation in current context", buffer);
                 if(mode==TCP_MODE){
                     if(send(s, buffer, msgSize, 0) != msgSize){
                         logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1, "\nError sending error response message");
@@ -577,7 +589,7 @@ void TFTPserverReadMode(ProtocolMode mode,int s, char * hostName, char * hostIp,
                         logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1, "\nError sending error response message");
                     }
                 }
-				logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1, "Unrecognized operation in current context");
+				logError(hostName, hostIp,fileName, MODE_STR(mode), port, -ILLEGAL_OPERATION, "Unrecognized operation in current context");
 				close(s);			
 				fclose(f);
 				exit(EXIT_FAILURE);
@@ -616,6 +628,8 @@ void TFTPserverWriteMode(ProtocolMode mode,int s, char * hostName, char * hostIp
 		strcpy(SIGALRMhostIp, hostIp);
 		strcpy(SIGALRMfileName, fileName);
 		SIGALRMport = port;
+		SIGALRMf = NULL;
+		SIGALRMs = s;
 	}
 
 	char finalPath[30];
@@ -657,6 +671,10 @@ void TFTPserverWriteMode(ProtocolMode mode,int s, char * hostName, char * hostIp
 		logError(hostName, hostIp,fileName, MODE_STR(mode), port, -1, "client couldn't open file");
 		close(s);
 		exit(EXIT_FAILURE);
+	}
+	
+	if(mode == UDP_MODE){
+		SIGALRMf = f;
 	}
 
 	blockNumber = 0;

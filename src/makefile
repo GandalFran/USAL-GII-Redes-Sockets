@@ -3,8 +3,8 @@ CFLAGS=-g
 COFLAGS=-g -c
 OBJ= msgUtils.o
 
-#LIBS= -lsocket -lnsl
-LIBS= 
+LIBS= -lsocket -lnsl
+#LIBS= 
 
 all: TFTPserver TFTPclient removeCompilationWaste
 

@@ -63,6 +63,7 @@ int fillBufferWithReadMsg(bool isRead,char * fileName, char * buffer){
 	memset(buffer,0,TAM_BUFFER);
 
 	uint16_t header = isRead ? READ_TYPE : WRITE_TYPE;
+	
 	char mode[] = OCTET_MODE;
 
 	memcpy(buffer,&header,sizeof(uint16_t));
