@@ -91,7 +91,7 @@ int fillBufferWithReadMsg(bool isRead,char * fileName, char * buffer){
 	char mode[] = OCTET_MODE;
 	memset(buffer,0,TAM_BUFFER);
 
-	header = htons(isRead ? READ_TYPE : WRITE_TYPE);
+	header = htons(isRead ? 1 : 2);
 
 	memcpy(buffer,&header,sizeof(uint16_t));
 	memcpy(&(buffer[2]),fileName,strlen(fileName));
@@ -103,20 +103,20 @@ int fillBufferWithDataMsg(int blockNumber, char * data, size_t dataSize,char * b
 	uint16_t header, block;
 	memset(buffer,0,TAM_BUFFER);
 
-	header = htons(DATA_TYPE);
+	header = htons(3);
 	block = htons(blockNumber);
 
 	memcpy(buffer,&header,sizeof(uint16_t));
 	memcpy(&(buffer[2]),&block,sizeof(uint16_t));
 	memcpy(&(buffer[4]),data,dataSize);
 
-	return (2 + 2 + dataSize + 1);
+	return (2 + 2 + dataSize);
 }
 int fillBufferWithAckMsg(int blockNumber, char * buffer){
 	uint16_t header, block;
 	memset(buffer,0,TAM_BUFFER);
 
-	header = htons(ACK_TYPE);
+	header = htons(4);
 	block = htons(blockNumber);
 
 	memcpy(buffer,&header,sizeof(uint16_t));
@@ -128,7 +128,7 @@ int fillBufferWithErrMsg(errorMsgCodes errorcode, char * errorMsg, char * buffer
 	uint16_t header, ec;
 	memset(buffer,0,TAM_BUFFER);
 
-	header = htons(ERR_TYPE);
+	header = htons(5);
 	ec = htons(errorcode);
 
 	memcpy(buffer,&header,sizeof(uint16_t));

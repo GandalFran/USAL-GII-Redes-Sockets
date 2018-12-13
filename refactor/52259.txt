@@ -1,0 +1,5 @@
+
+[2018-12-13 20:41:12][HOST: olivo.fis.usal.es][PROTOCOL: TCP][FILE: test1.gif][STARTED WRITE]
+[2018-12-13 20:41:15][HOST: olivo.fis.usal.es][PROTOCOL: TCP][FILE: test1.gif][SEND: 1]
+[2018-12-13 20:41:17][HOST: olivo.fis.usal.es][PROTOCOL: TCP][FILE: test1.gif][SEND: 2]
+[2018-12-13 20:41:18][HOST: olivo.fis.usal.es][PROTOCOL: TCP][PORT: 52259][FILE: test1.gif][ERROR: ILEGAL_OPERATION][MSG: Illegal operation of TFTP, the message must be data or error]

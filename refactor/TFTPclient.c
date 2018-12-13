@@ -287,7 +287,7 @@ void TFTPclientReadMode(ProtocolMode mode,char * hostName, char * file){
 		SIGALRMf = f;
 	}
 
-	endSesion = 0;
+	endSesion = FALSE;
 	blockNumber = 1;
 	while(!endSesion){
 		//act according to type

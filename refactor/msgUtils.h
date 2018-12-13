@@ -15,7 +15,7 @@
 #include<arpa/inet.h>
 #include "utils.h"
 
-#define DATA_SIZE(size) ((size) - 5)
+#define DATA_SIZE(size) ((size) - 4)
 
 //TODO mirar cuales son los tamanos de estos y el codigo que corresopnde a octet
 #define MSG_FILE_NAME_SIZE 30
