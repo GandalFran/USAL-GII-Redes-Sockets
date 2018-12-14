@@ -1,0 +1,4 @@
+
+[2018-12-14 17:29:47][HOST: olivo.fis.usal.es][PROTOCOL: TCP][FILE: test1.gif][STARTED WRITE]
+[2018-12-14 17:29:47][HOST: olivo.fis.usal.es][PROTOCOL: TCP][FILE: test1.gif][SEND: 3]
+[2018-12-14 17:29:47][HOST: olivo.fis.usal.es][PROTOCOL: TCP][PORT: 47008][FILE: test1.gif][ERROR: UNKNOWN][MSG: Recived data block which doesnt matches with current]

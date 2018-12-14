@@ -1,4 +1,0 @@
-
-[2018-12-11 13:27:49][HOST: olivo.fis.usal.es][PROTOCOL: TCP][FILE: test6.gif][STARTED READ]
-[2018-12-11 13:27:49][HOST: olivo.fis.usal.es][PROTOCOL: TCP][FILE: test6.gif][RECIVED: 0]
-[2018-12-11 13:27:49][HOST: olivo.fis.usal.es][PROTOCOL: TCP][PORT: 44386][FILE: test6.gif][ERROR: UNKNOWN][MSG: Recived ACK for block which doesn't matches with current]
