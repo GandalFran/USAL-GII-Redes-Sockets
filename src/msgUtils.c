@@ -13,80 +13,82 @@
 #include <string.h>
 
 
-#define READ_HEADER_STR  "01"
-#define WRITE_HEADER_STR "02"
-#define DATA_HEADER_STR  "03"
-#define ACK_HEADER_STR   "04"
-#define ERR_HEADER_STR   "05"
-
 headers getMessageTypeWithBuffer(char * buffer){
-	uint16_t header;
-	memcpy(&header,buffer,sizeof(uint16_t));
+	char header[30];
+	
+	memset(header,0,30);
+	memcpy(&header,buffer,2);
+
+	if(!strcmp(header,READ_HEADER_STR)){
+		return READ_TYPE;
+	}else if(!strcmp(header,WRITE_HEADER_STR)){
+		return WRITE_TYPE;
+	}else if(!strcmp(header,DATA_HEADER_STR)){
+		return DATA_TYPE;
+	}else if(!strcmp(header,ACK_HEADER_STR)){
+		return ACK_TYPE;
+	}else if(!strcmp(header,ERR_HEADER_STR)){
+		return ERR_TYPE;
+	}else{
+		return UNKNOWN_TYPE;
+	}
+
 	return ntohs(header);
 }
 
 rwMsg fillReadMsgWithBuffer(char * buffer){
 	rwMsg msg;
-	uint16_t header;
 
 	memset(&msg,0,sizeof(rwMsg));
-	memset(&header,0,sizeof(uint16_t));
 
-	memcpy(&header,buffer,sizeof(uint16_t));
 	strcpy(msg.fileName,&(buffer[2]));
 	strcpy(msg.characterMode,&(buffer[2 + strlen(msg.fileName) + 1]));
 
-	msg.header = ntohs(header);
+	msg.header = getMessageTypeWithBuffer(buffer);
 
 	return msg;
 }
 dataMsg fillDataWithBuffer(size_t dataSize, char * buffer){
 	dataMsg msg;
-	uint16_t header, block;
+	uint16_t block;
 
 	memset(&msg,0,sizeof(dataMsg));
 	memset(&block,0,sizeof(uint16_t));
-	memset(&header,0,sizeof(uint16_t));
 
-	memcpy(&header,buffer,sizeof(uint16_t));
 	memcpy(&block,&(buffer[2]),sizeof(uint16_t));
 	memcpy(msg.data,&(buffer[4]),dataSize-1);
 
-	msg.header = ntohs(header);
 	msg.blockNumber = ntohs(block);
+	msg.header = getMessageTypeWithBuffer(buffer);
 
 	return msg;
 }
 ackMsg fillAckWithBuffer(char * buffer){
 	ackMsg msg;
-	uint16_t header, block;
+	uint16_t block;
 
 	memset(&msg,0,sizeof(ackMsg));
 	memset(&block,0,sizeof(uint16_t));
-	memset(&header,0,sizeof(uint16_t));
 
-	memcpy(&header,buffer,sizeof(uint16_t));
 	memcpy(&block,&(buffer[2]),sizeof(uint16_t));
 
-	msg.header = ntohs(header);
 	msg.blockNumber = ntohs(block);
+	msg.header = getMessageTypeWithBuffer(buffer);
 
 	return msg;
 }
 errMsg fillErrWithBuffer(char * buffer){
 	errMsg msg;
-	uint16_t header, ec;
+	uint16_t ec;
 
 	memset(&msg,0,sizeof(errMsg));
 	memset(&ec,0,sizeof(uint16_t));
-	memset(&header,0,sizeof(uint16_t));
 
-	memcpy(&header,buffer,sizeof(uint16_t));
 	memcpy(&ec,&(buffer[2]),sizeof(uint16_t));
 	strcpy(msg.errorMsg,&(buffer[4]));
 
-	msg.header = ntohs(header);
 	msg.errorCode = ntohs(ec);
+	msg.header = getMessageTypeWithBuffer(buffer);
 
 	return msg;
 }
