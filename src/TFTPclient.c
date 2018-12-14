@@ -245,6 +245,7 @@ void TFTPclientReadMode(ProtocolMode mode,char * hostName, char * file){
 			exit(EXIT_FAILURE);	
 		}
 		//wait for data block
+		memset(buffer,0,TAM_BUFFER);
 		msgSize = recv(s, buffer, TAM_BUFFER, 0);
 		if(msgSize < TAM_BUFFER && msgSize>0) buffer[msgSize] = '\0';
 	}else{
@@ -258,6 +259,7 @@ void TFTPclientReadMode(ProtocolMode mode,char * hostName, char * file){
 				exit(EXIT_FAILURE);	
 			}
 			//wait for data block
+			memset(buffer,0,TAM_BUFFER);
 			timeOutPassed = FALSE;
 			alarm(TIMEOUT);
 			msgSize = recvfrom(s, buffer, TAM_BUFFER, 0,(struct sockaddr*)&servaddr_in,&addrlen);
@@ -285,8 +287,8 @@ void TFTPclientReadMode(ProtocolMode mode,char * hostName, char * file){
 		SIGALRMf = f;
 	}
 
-	endSesion = 0;
-	blockNumber = 0;
+	endSesion = FALSE;
+	blockNumber = 1;
 	while(!endSesion){
 		//act according to type
 		switch(getMessageTypeWithBuffer(buffer)){
@@ -340,6 +342,7 @@ void TFTPclientReadMode(ProtocolMode mode,char * hostName, char * file){
 					exit(EXIT_FAILURE);
 				}
 				//recive next data block
+				memset(buffer,0,TAM_BUFFER);
 				msgSize = recv(s, buffer, TAM_BUFFER, 0);
 			  	if(msgSize < TAM_BUFFER && msgSize>0) buffer[msgSize] = '\0';
 			}else{
@@ -354,6 +357,7 @@ void TFTPclientReadMode(ProtocolMode mode,char * hostName, char * file){
 						exit(EXIT_FAILURE);
 					}
 					//recive next data block
+					memset(buffer,0,TAM_BUFFER);
 					timeOutPassed = FALSE;
 					alarm(TIMEOUT);
 					msgSize = recvfrom(s, buffer, TAM_BUFFER, 0,(struct sockaddr*)&servaddr_in,&addrlen);
@@ -530,6 +534,7 @@ void TFTPclientWriteMode(ProtocolMode mode,char * hostName, char * file){
 			exit(EXIT_FAILURE);	
 		}
 		//wait for ack
+		memset(buffer,0,TAM_BUFFER);
 		msgSize = recv(s, buffer, TAM_BUFFER, 0);
 		if(msgSize < TAM_BUFFER && msgSize>0) buffer[msgSize] = '\0';
 	}else{
@@ -544,6 +549,7 @@ void TFTPclientWriteMode(ProtocolMode mode,char * hostName, char * file){
 				exit(EXIT_FAILURE);	
 			}
 			//wait for ack
+			memset(buffer,0,TAM_BUFFER);
 			timeOutPassed = FALSE;
 			alarm(TIMEOUT);
 			msgSize = recvfrom(s, buffer, TAM_BUFFER, 0,(struct sockaddr*)&servaddr_in,&addrlen);
@@ -582,7 +588,6 @@ void TFTPclientWriteMode(ProtocolMode mode,char * hostName, char * file){
 				if( blockNumber != ackmsg.blockNumber ){
 					close(s);			
 					fclose(f);
-					fprintf(stderr, "%d %d\n",blockNumber,ackmsg.blockNumber );
 					logError(hostName, port, file, MODE_STR(mode), -1 , "Recived ACK for block which doesn't matches with current");
 					exit(EXIT_FAILURE);
 				}
@@ -624,6 +629,7 @@ void TFTPclientWriteMode(ProtocolMode mode,char * hostName, char * file){
 				exit(EXIT_FAILURE);
 			}
         	//wait for ack
+			memset(buffer,0,TAM_BUFFER);
 			msgSize = recv(s, buffer, TAM_BUFFER, 0);
 			if(msgSize < TAM_BUFFER && msgSize>0) buffer[msgSize] = '\0';
         }else{
@@ -638,6 +644,7 @@ void TFTPclientWriteMode(ProtocolMode mode,char * hostName, char * file){
 					exit(EXIT_FAILURE);
 				}
 	        	//wait for ack
+				memset(buffer,0,TAM_BUFFER);
 	        	timeOutPassed = FALSE;
 				alarm(TIMEOUT);
 				msgSize = recvfrom(s, buffer, TAM_BUFFER, 0,(struct sockaddr*)&servaddr_in,&addrlen);
@@ -653,7 +660,7 @@ void TFTPclientWriteMode(ProtocolMode mode,char * hostName, char * file){
 		}
 
 		//log received data 
-		logConnection(hostName, port, file, MODE_STR(mode), blockNumber-1, LOG_WRITE);
+		logConnection(hostName, port, file, MODE_STR(mode), blockNumber, LOG_WRITE);
 
 		//check if the file has ended
         if(feof(f))
@@ -691,7 +698,7 @@ void logConnection(char * hostName,int port, char * fileName, char * protocol, i
 		break;
 	}
 
-	fprintf(stderr,"%s",toLog);
+	//fprintf(stderr,"%s",toLog);
 	fprintf(logFile,"%s",toLog);
 
 	fclose(logFile);
@@ -711,7 +718,7 @@ void logError(char * hostName, int port, char * fileName, char * protocol, int e
 		case 3: strcpy(error,"DISK_FULL"); break;
 		case 4: strcpy(error,"ILEGAL_OPERATION"); break;
 		case 6: strcpy(error,"FILE_ALREADY_EXISTS"); break;
-		case -1: strcpy(error,"-1"); break;
+		case -1: strcpy(error,"INTERNAL_ERROR"); break;
 	}
 
 	sprintf(toLog,"\n[%s][HOST: %s][PROTOCOL: %s][PORT: %d][FILE: %s][ERROR: %s][MSG: %s]",getDateAndTime(), hostName, protocol, port, fileName, error, errormsg);

@@ -1,5 +1,5 @@
-#!/bin/bash
-#variables
+#!/bin/sh
+#vars
 LOG_FOLDER_NAME=log
 SERVER_FOLDER_NAME=ficherosTFTPserver
 CLIENT_FOLDER_NAME=ficherosTFTPclient
@@ -21,6 +21,25 @@ if [ ! -d "$SERVER_FOLDER_NAME" ]; then
 fi
 if [ ! -d "$CLIENT_FOLDER_NAME" ]; then
 	mkdir $CLIENT_FOLDER_NAME
+fi
+#delete transferred files
+if [ -f "$SERVER_FOLDER_NAME/$FILE1" ]; then
+	rm $SERVER_FOLDER_NAME/$FILE1
+fi
+if [ -f "$SERVER_FOLDER_NAME/$FILE2" ]; then
+	rm $SERVER_FOLDER_NAME/$FILE2
+fi
+if [ -f "$SERVER_FOLDER_NAME/$FILE5" ]; then
+	rm $SERVER_FOLDER_NAME/$FILE5
+fi
+if [ -f "$CLIENT_FOLDER_NAME/$FILE3" ]; then
+	rm $CLIENT_FOLDER_NAME/$FILE3
+fi
+if [ -f "$CLIENT_FOLDER_NAME/$FILE4" ]; then
+	rm $CLIENT_FOLDER_NAME/$FILE4
+fi
+if [ -f "$CLIENT_FOLDER_NAME/$FILE6" ]; then
+	rm $CLIENT_FOLDER_NAME/$FILE6
 fi
 #compile
 make

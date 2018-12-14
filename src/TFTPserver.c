@@ -252,6 +252,7 @@ int main(int argc, char * argv[]){
                 }
 
                 //read client request to know if is required read or write
+				memset(buffer,0,TAM_BUFFER);
                 msgSize = recv(s_TCP,buffer,TAM_BUFFER,0);
                 if(msgSize <= 0){
                     msgSize = fillBufferWithErrMsg(UNKNOWN,"error on receiving client request", buffer);
@@ -292,6 +293,7 @@ int main(int argc, char * argv[]){
 		if (FD_ISSET(s_UDP, &readmask)) {
 			nRetries = 0;
 			do{
+				memset(buffer,0,TAM_BUFFER);
 				timeOutPassed = FALSE;
 				alarm(TIMEOUT);
 				if(-1 == (msgSize = recvfrom(s_UDP, buffer, TAM_BUFFER, 0, (struct sockaddr*)&clientaddr_in, &addrlen))){
@@ -475,7 +477,7 @@ void TFTPserverReadMode(ProtocolMode mode,int s, char * hostName, char * hostIp,
 		SIGALRMf = f;
 	}
 
-	blockNumber = 0;
+	blockNumber = 1;
 	endSesion = FALSE;
 	while(!endSesion){
 		//read data block from file
@@ -513,6 +515,7 @@ void TFTPserverReadMode(ProtocolMode mode,int s, char * hostName, char * hostIp,
 				exit(EXIT_FAILURE);
 			}
 			//wait for ack
+			memset(buffer,0,TAM_BUFFER);
 			msgSize = recv(s, buffer, TAM_BUFFER, 0);
 			if(msgSize < TAM_BUFFER && msgSize>0) buffer[msgSize] = '\0';
 		}else{
@@ -531,6 +534,7 @@ void TFTPserverReadMode(ProtocolMode mode,int s, char * hostName, char * hostIp,
 					exit(EXIT_FAILURE);
 				}
 				//wait for ack
+				memset(buffer,0,TAM_BUFFER);
 				timeOutPassed = FALSE; 
 				alarm(TIMEOUT);
 				msgSize = recvfrom(s, buffer, TAM_BUFFER, 0,(struct sockaddr*)&clientaddr_in,&addrlen);
@@ -693,8 +697,9 @@ void TFTPserverWriteMode(ProtocolMode mode,int s, char * hostName, char * hostIp
 			exit(EXIT_FAILURE);
 		}
 		//wait for data block 
+		memset(buffer,0,TAM_BUFFER);
 		msgSize = recv(s, buffer, TAM_BUFFER, 0);
-		  if(msgSize < TAM_BUFFER && msgSize>0) buffer[msgSize] = '\0';
+		if(msgSize < TAM_BUFFER && msgSize>0) buffer[msgSize] = '\0';
 	}else{
 		nRetries = 0;
 		do{
@@ -711,6 +716,7 @@ void TFTPserverWriteMode(ProtocolMode mode,int s, char * hostName, char * hostIp
 				exit(EXIT_FAILURE);
 			}
 			//wait for data block 
+			memset(buffer,0,TAM_BUFFER);
 			timeOutPassed = FALSE;
 			alarm(TIMEOUT);
 			msgSize = recvfrom(s, buffer, TAM_BUFFER, 0,(struct sockaddr*)&clientaddr_in,&addrlen);
@@ -735,14 +741,12 @@ void TFTPserverWriteMode(ProtocolMode mode,int s, char * hostName, char * hostIp
 		exit(EXIT_FAILURE);	
 	}
 
-	endSesion = 0;
+	blockNumber = 1;
+	endSesion = FALSE;
 	while(!endSesion){
-
 		//act according to type
 		switch(getMessageTypeWithBuffer(buffer)){
 			case DATA_TYPE:
-        //increment block number 
-        blockNumber += 1;
 				datamsg = fillDataWithBuffer(msgSize,buffer);
 				//check if block number is the correct one
 				if(datamsg.blockNumber != blockNumber ){
@@ -761,7 +765,7 @@ void TFTPserverWriteMode(ProtocolMode mode,int s, char * hostName, char * hostIp
 					fclose(f);
 					exit(EXIT_FAILURE);
 				}
-				//write the send data
+				//write the recived data
 				writeResult = fwrite(datamsg.data,1,DATA_SIZE(msgSize),f);
 				if(-1 == writeResult){
                     msgSize = fillBufferWithErrMsg(UNKNOWN, "Unable to write the file", buffer);
@@ -817,6 +821,7 @@ void TFTPserverWriteMode(ProtocolMode mode,int s, char * hostName, char * hostIp
 					exit(EXIT_FAILURE);
 				}
 				//recive next data block
+				memset(buffer,0,TAM_BUFFER);
 				msgSize = recv(s, buffer, TAM_BUFFER, 0);
 			  	if(msgSize < TAM_BUFFER && msgSize>0) buffer[msgSize] = '\0';
 			}else{
@@ -834,6 +839,7 @@ void TFTPserverWriteMode(ProtocolMode mode,int s, char * hostName, char * hostIp
 						exit(EXIT_FAILURE);
 					}
 					//recive next data block
+					memset(buffer,0,TAM_BUFFER);
 					timeOutPassed = FALSE;
 					alarm(TIMEOUT);
 					msgSize = recvfrom(s, buffer, TAM_BUFFER, 0,(struct sockaddr*)&clientaddr_in,&addrlen);
@@ -856,6 +862,8 @@ void TFTPserverWriteMode(ProtocolMode mode,int s, char * hostName, char * hostIp
 				fclose(f);
 				exit(EXIT_FAILURE);	
 			}
+        	//increment block number 
+        	blockNumber += 1;
 		}
 				
 	}
