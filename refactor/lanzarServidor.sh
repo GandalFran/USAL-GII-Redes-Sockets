@@ -23,7 +23,7 @@ if [ ! -d "$CLIENT_FOLDER_NAME" ]; then
 	mkdir $CLIENT_FOLDER_NAME
 fi
 #kill old server
-killall -9 TFTPserver
+killall -9 TFTPlserver
 #delete transferred files
 if [ -f "$SERVER_FOLDER_NAME/$FILE1" ]; then
 	rm $SERVER_FOLDER_NAME/$FILE1
@@ -46,10 +46,10 @@ fi
 #compile
 make
 #run
-./TFTPserver
-./TFTPclient $SERVER_IP TCP e $FILE1 &
-./TFTPclient $SERVER_IP TCP e $FILE2 &
+#./TFTPgserver
+#./TFTPclient $SERVER_IP TCP e $FILE1 &
+#./TFTPclient $SERVER_IP TCP e $FILE2 &
 ./TFTPclient $SERVER_IP TCP l $FILE3 &
-./TFTPclient $SERVER_IP UDP l $FILE4 &
-./TFTPclient $SERVER_IP UDP e $FILE5 &
-./TFTPclient $SERVER_IP UDP l $FILE6 &
+#./TFTPclient $SERVER_IP UDP l $FILE4 &
+#./TFTPclient $SERVER_IP UDP e $FILE5 &
+#./TFTPclient $SERVER_IP UDP l $FILE6 &
