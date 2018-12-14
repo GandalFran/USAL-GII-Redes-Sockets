@@ -26,6 +26,7 @@
 
 bool end;
 bool timeOutPassed;
+bool ErrorisReadMode;
 int nRetries;
 extern int errno;
 
@@ -422,6 +423,8 @@ void TFTPserverReadMode(ProtocolMode mode,int s, char * hostName, char * hostIp,
 
 	int addrlen = sizeof(struct sockaddr_in);
 
+	logConnection(hostName, hostIp,fileName, MODE_STR(mode), port, 0, LOG_START_WRITE);
+
 	if(mode == UDP_MODE){
 		strcpy(SIGALRMhostName, hostName);
 		strcpy(SIGALRMhostIp, hostIp);
@@ -431,9 +434,10 @@ void TFTPserverReadMode(ProtocolMode mode,int s, char * hostName, char * hostIp,
 		SIGALRMs = s;
 	}
 
+	ErrorisReadMode = TRUE;
+
 	char finalPath[30];
 	sprintf(finalPath,"%s/%s",SERVER_FILES_FOLDER,fileName);
-
 
 	//check if file exists
 	bool fileExists = (access(finalPath, F_OK ) != -1) ? TRUE : FALSE;	
@@ -607,7 +611,7 @@ void TFTPserverReadMode(ProtocolMode mode,int s, char * hostName, char * hostIp,
 
 	close(s);
 	fclose(f);
-	logConnection(hostName, hostIp,fileName, MODE_STR(mode), port, 0, LOG_END_READ);
+	logConnection(hostName, hostIp,fileName, MODE_STR(mode), port, blockNumber-2, LOG_END_READ);
 }
 
 void TFTPserverWriteMode(ProtocolMode mode,int s, char * hostName, char * hostIp, int port, char * fileName, struct sockaddr_in clientaddr_in){
@@ -635,6 +639,10 @@ void TFTPserverWriteMode(ProtocolMode mode,int s, char * hostName, char * hostIp
 		SIGALRMf = NULL;
 		SIGALRMs = s;
 	}
+
+	ErrorisReadMode = FALSE;
+
+	logConnection(hostName, hostIp,fileName, MODE_STR(mode), port, 0, LOG_START_READ);
 
 	char finalPath[30];
 	sprintf(finalPath,"%s/%s",SERVER_FILES_FOLDER,fileName);
@@ -897,25 +905,29 @@ void TFTPserverWriteMode(ProtocolMode mode,int s, char * hostName, char * hostIp
 
 	close(s);
 	fclose(f);
-	logConnection(hostName, hostIp,fileName, MODE_STR(mode), port, 0, LOG_END_WRITE);
+	logConnection(hostName, hostIp,fileName, MODE_STR(mode), port, blockNumber, LOG_END_WRITE);
 }
 
 
 
 
 void logConnection(char * hostName, char * hostIp, char * fileName, char * protocol, int port, int block, int mode){
-	char path[20];
 	char toLog[LOG_MESSAGE_SIZE];
 
-	sprintf(path,"%s/%s",LOG_FOLDER,SERVER_LOG);
-	FILE*logFile = fopen(path,"a+");
+	FILE*logFile = fopen(SERVER_LOG,"a+"); 
 
-	switch(mode){
+	switch(mode){ 
+		case LOG_START_READ:  
+			sprintf(toLog,"\n[%s][HOST: %s][IP: %s][PROTOCOL: %s][PORT: %d][FILE: %s][STARTED READ]", getDateAndTime(), hostName, hostIp, protocol, port, fileName); 
+		break;
+		case LOG_START_WRITE: 
+			sprintf(toLog,"\n[%s][HOST: %s][IP: %s][PROTOCOL: %s][PORT: %d][FILE: %s][STARTED WRITE]", getDateAndTime(), hostName, hostIp, protocol, port, fileName); 
+		break;
 		case LOG_END_READ:  
-			sprintf(toLog,"\n[%s][HOST: %s][IP: %s][PROTOCOL: %s][PORT: %d][FILE: %s][READ SUCCED]", getDateAndTime(), hostName, hostIp, protocol, port, fileName); 
+			sprintf(toLog,"\n[%s][HOST: %s][IP: %s][PROTOCOL: %s][PORT: %d][FILE: %s][BLOCKS: %d][READ SUCCED]", getDateAndTime(), hostName, hostIp, protocol, port, fileName,block); 
 		break;
 		case LOG_END_WRITE: 
-			sprintf(toLog,"\n[%s][HOST: %s][IP: %s][PROTOCOL: %s][PORT: %d][FILE: %s][WRITE SUCCED]", getDateAndTime(), hostName, hostIp, protocol, port, fileName); 
+			sprintf(toLog,"\n[%s][HOST: %s][IP: %s][PROTOCOL: %s][PORT: %d][FILE: %s][BLOCKS:%d][WRITE SUCCED]", getDateAndTime(), hostName, hostIp, protocol, port, fileName,block); 
 		break;
 	}
 
@@ -924,12 +936,10 @@ void logConnection(char * hostName, char * hostIp, char * fileName, char * proto
 }
 
 void logError(char * hostName, char * hostIp, char * fileName, char * protocol, int port, int errorCode, char * errormsg){
-	char path[40];
 	char error[30];
 	char toLog[LOG_MESSAGE_SIZE];
 
-	sprintf(path,"%s/%s",LOG_FOLDER,SERVER_LOG);
-	FILE*logFile = fopen(path,"a+");    
+	FILE*logFile = fopen(SERVER_LOG,"a+");    
 
 	switch (errorCode) {
 		case 0: strcpy(error,"UNKNOWN"); break;
@@ -939,10 +949,9 @@ void logError(char * hostName, char * hostIp, char * fileName, char * protocol, 
 		case 6: strcpy(error,"FILE_ALREADY_EXISTS"); break;
 		case -1: strcpy(error,"INTERNAL_SERVER_ERRROR"); break;
 	}
-	sprintf(toLog,"\n[%s][HOST: %s][IP: %s][PROTOCOL: %s][PORT: %d][FILE: %s][ERROR : %s][MSG: %s]", getDateAndTime(), hostName, hostIp, protocol, port, fileName,error, errormsg);
+	sprintf(toLog,"\n[%s][HOST: %s][IP: %s][PROTOCOL: %s][MODE: %s][PORT: %d][FILE: %s][ERROR : %s][MSG: %s]", getDateAndTime(), hostName, hostIp, protocol,(ErrorisReadMode?("READ"):("WRITE")), port, fileName,error, errormsg);
 
 	fprintf(logFile, "%s",toLog);
-
 	fclose(logFile);
 }
 

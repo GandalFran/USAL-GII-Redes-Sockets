@@ -1,6 +1,5 @@
 #!/bin/sh
 #variables
-LOG_FOLDER_NAME=log
 SERVER_FOLDER_NAME=ficherosTFTPserver
 CLIENT_FOLDER_NAME=ficherosTFTPclient
 FILE1=test1.gif
@@ -10,9 +9,11 @@ FILE4=test4.gif
 FILE5=test5.gif
 FILE6=test6.gif
 #if doesn't exists folders crete, and if exists clean 
-if [ -d "$LOG_FOLDER_NAME" ]; then
-	rm $LOG_FOLDER_NAME/*.*
+if [ -f "peticiones.log" ]; then
+	rm peticiones.log
 fi
+rm *.txt
+
 #delete transferred files
 if [ -f "$SERVER_FOLDER_NAME/$FILE1" ]; then
 	rm $SERVER_FOLDER_NAME/$FILE1

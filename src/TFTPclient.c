@@ -20,7 +20,7 @@
 #include "utils.h"
 #include "msgUtils.h"
 
-#define USAGE_ERROR_MSG "Error: usage ./client <server name or ip> <TCP or UDP> <r or w> <file>"
+#define USAGE_ERROR_MSG "Error: usage ./client <server name or ip> <TCP or UDP> <l or e> <file>"
 
 #define TCP_ARG "TCP"
 #define UDP_ARG "UDP"
@@ -55,6 +55,18 @@ int main(int argc, char * argv[]){
 		|| !(!strcmp(argv[3],READ_ARG)|| !strcmp(argv[3],WRITE_ARG))
 	){
 		fprintf(stderr,"%s",USAGE_ERROR_MSG);
+		exit(EXIT_FAILURE);
+	}
+
+	//check if file exists and throw error if neccesary
+	char finalPath[30];
+	sprintf(finalPath,"%s/%s",CLIENT_FILES_FOLDER,argv[4]);
+	bool fileExists = (access( finalPath, F_OK ) != -1) ? TRUE : FALSE;
+	if(fileExists && !strcmp(argv[3],READ_ARG)){
+		fprintf(stderr,"\nIs read mode and the given file (%s) already exists",argv[4]);
+		exit(EXIT_FAILURE);
+	}else if(!fileExists && !strcmp(argv[3],WRITE_ARG)){
+		fprintf(stderr,"\nIs write mode and the given file (%s) doesn't exists",argv[4]);
 		exit(EXIT_FAILURE);
 	}
 
@@ -677,7 +689,7 @@ void logConnection(char * hostName,int port, char * fileName, char * protocol, i
 	char path[20];
 	char toLog[LOG_MESSAGE_SIZE];
 
-	sprintf(path,"%s/%d%s",LOG_FOLDER,port,CLIENT_LOG_EXT);
+	sprintf(path,"%d%s",port,CLIENT_LOG_EXT);
 	FILE*logFile = fopen(path,"a+");
 
 	switch(mode){
@@ -709,7 +721,7 @@ void logError(char * hostName, int port, char * fileName, char * protocol, int e
 	char error[30];
 	char toLog[LOG_MESSAGE_SIZE];
 
-	sprintf(path,"%s/%d%s",LOG_FOLDER,port,CLIENT_LOG_EXT);
+	sprintf(path,"%d%s",port,CLIENT_LOG_EXT);
 	FILE*logFile = fopen(path,"a+");    
 
 	switch (errorCode) {
