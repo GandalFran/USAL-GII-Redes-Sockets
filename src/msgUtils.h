@@ -17,7 +17,6 @@
 
 #define DATA_SIZE(size) ((size) - 4)
 
-
 #define MSG_FILE_NAME_SIZE 30
 #define MSG_MODE_SIZE 128
 #define MSG_DATA_SIZE 512

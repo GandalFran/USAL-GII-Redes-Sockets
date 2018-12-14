@@ -32,8 +32,6 @@ headers getMessageTypeWithBuffer(char * buffer){
 	}else{
 		return UNKNOWN_TYPE;
 	}
-
-	return ntohs(header);
 }
 
 rwMsg fillReadMsgWithBuffer(char * buffer){
@@ -96,8 +94,9 @@ errMsg fillErrWithBuffer(char * buffer){
 int fillBufferWithReadMsg(bool isRead,char * fileName, char * buffer){
 	memset(buffer,0,TAM_BUFFER);
 
+	char header[2];
 	char mode[] = OCTET_MODE;
-	char header[] = ((isRead) ? (READ_HEADER_STR) : (WRITE_HEADER_STR));
+	strcpy(header, ((isRead) ? (READ_HEADER_STR) : (WRITE_HEADER_STR)));
 
 	memcpy(buffer,header,2);
 	memcpy(&(buffer[2]),fileName,strlen(fileName));
