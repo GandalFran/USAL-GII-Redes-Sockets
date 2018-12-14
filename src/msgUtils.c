@@ -12,12 +12,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+
+#define READ_HEADER_STR  "01"
+#define WRITE_HEADER_STR "02"
+#define DATA_HEADER_STR  "03"
+#define ACK_HEADER_STR   "04"
+#define ERR_HEADER_STR   "05"
+
 headers getMessageTypeWithBuffer(char * buffer){
 	uint16_t header;
 	memcpy(&header,buffer,sizeof(uint16_t));
 	return ntohs(header);
 }
-
 
 rwMsg fillReadMsgWithBuffer(char * buffer){
 	rwMsg msg;
@@ -86,50 +92,50 @@ errMsg fillErrWithBuffer(char * buffer){
 }
 
 int fillBufferWithReadMsg(bool isRead,char * fileName, char * buffer){
-	uint16_t header;
-	char mode[] = OCTET_MODE;
 	memset(buffer,0,TAM_BUFFER);
-	header = htons(isRead ? READ_TYPE : WRITE_TYPE);
 
-	memcpy(buffer,&header,sizeof(uint16_t));
+	char mode[] = OCTET_MODE;
+	char header[] = ((isRead) ? (READ_HEADER_STR) : (WRITE_HEADER_STR));
+
+	memcpy(buffer,header,2);
 	memcpy(&(buffer[2]),fileName,strlen(fileName));
 	memcpy(&(buffer[2 + strlen(fileName) + 1]),mode,strlen(mode));
 
 	return (2 + strlen(fileName) + 1 + strlen(mode) + 1);
 }
 int fillBufferWithDataMsg(int blockNumber, char * data, size_t dataSize,char * buffer){
-	uint16_t header, block;
+	uint16_t block;
 	memset(buffer,0,TAM_BUFFER);
 
-	header = htons(DATA_TYPE);
+	char header[] = DATA_HEADER_STR;
 	block = htons(blockNumber);
 
-	memcpy(buffer,&header,sizeof(uint16_t));
+	memcpy(buffer,header,2);
 	memcpy(&(buffer[2]),&block,sizeof(uint16_t));
 	memcpy(&(buffer[4]),data,dataSize);
 
 	return (2 + 2 + dataSize);
 }
 int fillBufferWithAckMsg(int blockNumber, char * buffer){
-	uint16_t header, block;
+	uint16_t block;
 	memset(buffer,0,TAM_BUFFER);
 
-	header = htons(ACK_TYPE);
+	char header[] = ACK_HEADER_STR;
 	block = htons(blockNumber);
 
-	memcpy(buffer,&header,sizeof(uint16_t));
+	memcpy(buffer,header,2);
 	memcpy(&(buffer[2]),&block,sizeof(uint16_t));
 
 	return (2 + 2);
 }
 int fillBufferWithErrMsg(errorMsgCodes errorcode, char * errorMsg, char * buffer){
-	uint16_t header, ec;
+	uint16_t ec;
 	memset(buffer,0,TAM_BUFFER);
 
-	header = htons(ERR_TYPE);
+	char header[] = ERR_HEADER_STR;
 	ec = htons(errorcode);
 
-	memcpy(buffer,&header,sizeof(uint16_t));
+	memcpy(buffer,header,2);
 	memcpy(&(buffer[2]),&ec,sizeof(uint16_t));
 	memcpy(&(buffer[4]),errorMsg,strlen(errorMsg));
 
