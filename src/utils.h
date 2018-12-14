@@ -22,7 +22,6 @@ typedef enum{LOG_START_READ, LOG_START_WRITE, LOG_READ, LOG_WRITE, LOG_END, LOG_
 #define TIME_STRING_SIZE 100
 #define LOG_MESSAGE_SIZE 1000
 
-#define LOG_FOLDER "log"
 #define SERVER_FILES_FOLDER "ficherosTFTPserver"
 #define CLIENT_FILES_FOLDER "ficherosTFTPclient"
 #define SERVER_LOG "peticiones.log"
