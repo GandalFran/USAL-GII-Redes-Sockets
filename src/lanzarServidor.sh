@@ -3,7 +3,7 @@
 LOG_FOLDER_NAME=log
 SERVER_FOLDER_NAME=ficherosTFTPserver
 CLIENT_FOLDER_NAME=ficherosTFTPclient
-SERVER_IP=192.168.2.246
+SERVER_IP=olivo.fis.usal.es
 FILE1=test1.gif
 FILE2=test2.gif
 FILE3=test3.gif
