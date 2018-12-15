@@ -611,7 +611,7 @@ void TFTPserverReadMode(ProtocolMode mode,int s, char * hostName, char * hostIp,
 
 	close(s);
 	fclose(f);
-	logConnection(hostName, hostIp,fileName, MODE_STR(mode), port, blockNumber-2, LOG_END_READ);
+	logConnection(hostName, hostIp,fileName, MODE_STR(mode), port, blockNumber, LOG_END_READ);
 }
 
 void TFTPserverWriteMode(ProtocolMode mode,int s, char * hostName, char * hostIp, int port, char * fileName, struct sockaddr_in clientaddr_in){
