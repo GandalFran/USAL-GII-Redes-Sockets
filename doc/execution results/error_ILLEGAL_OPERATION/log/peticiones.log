@@ -1,2 +1,2 @@
 
-[2018-12-11 13:50:23][HOST: olivo][IP: 212.128.144.104][PROTOCOL: TCP][PORT: 44885][FILE: test6.gif][ERROR : ILEGAL_OPERATION][MSG: error on client request header: isn't read or write]
+[2018-12-15 9:34:48][HOST: Mithrandir][IP: 192.168.2.246][PROTOCOL: TCP][MODE: WRITE][PORT: 61861][FILE: test3.gif][ERROR : ILEGAL_OPERATION][MSG: error on client request header: isn't read or write]

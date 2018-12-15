@@ -2,12 +2,10 @@ CC=gcc
 CFLAGS=-g
 COFLAGS=-g -c
 OBJ= msgUtils.o
-
-LIBS= -lsocket -lnsl
-#LIBS= 
+LIBS=-lsocket -lnsl
 
 all: TFTPserver TFTPclient removeCompilationWaste
-
+	
 TFTPserver: TFTPserver.c utils.h $(OBJ)
 	$(CC) $(CFLAGS) TFTPserver.c $(OBJ) $(LIBS) -o TFTPserver
 TFTPclient: TFTPclient.c utils.h $(OBJ) 

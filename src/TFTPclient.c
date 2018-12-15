@@ -734,7 +734,7 @@ void logError(char * hostName, int port, char * fileName, char * protocol, int e
 	}
 
 	sprintf(toLog,"\n[%s][HOST: %s][PROTOCOL: %s][PORT: %d][FILE: %s][ERROR: %s][MSG: %s]",getDateAndTime(), hostName, protocol, port, fileName, error, errormsg);
-	fprintf(stderr,"%s",toLog);
+	//fprintf(stderr,"%s",toLog);
 	fprintf(logFile, "%s",toLog);
 
 	fclose(logFile);
