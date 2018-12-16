@@ -1,10 +1,4 @@
-/*
 
-** Fichero: msgUtils.h
-** Autores:
-** Francisco Pinto Santos  DNI 70918455W
-** Hector Sanchez San Blas DNI 70901148Z
-*/
 
 #ifndef __MSGUTILS_H
 #define __MSGUTILS_H
@@ -17,7 +11,6 @@
 
 #define DATA_SIZE(size) ((size) - 4)
 
-
 #define MSG_FILE_NAME_SIZE 30
 #define MSG_MODE_SIZE 128
 #define MSG_DATA_SIZE 512
@@ -26,9 +19,13 @@
 
 #define OCTET_MODE "octet"
 
-typedef char byte;
+#define READ_HEADER_STR  "01"
+#define WRITE_HEADER_STR "02"
+#define DATA_HEADER_STR  "03"
+#define ACK_HEADER_STR   "04"
+#define ERR_HEADER_STR   "05"
 
-typedef enum { READ_TYPE=1,WRITE_TYPE=2,DATA_TYPE=3,ACK_TYPE=4,ERR_TYPE=5} headers;
+typedef enum { READ_TYPE=1,WRITE_TYPE=2,DATA_TYPE=3,ACK_TYPE=4,ERR_TYPE=5,UNKNOWN_TYPE=6} headers;
 typedef enum { UNKNOWN=0, FILE_NOT_FOUND=1, DISK_FULL=3, ILLEGAL_OPERATION=4, FILE_ALREADY_EXISTS=6 } errorMsgCodes;
 
 typedef struct{

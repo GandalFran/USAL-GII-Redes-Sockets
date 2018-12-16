@@ -1,10 +1,3 @@
-/*
-
-** Fichero: TFTPclient.c
-** Autores:
-** Francisco Pinto Santos  DNI 70918455W
-** Hector Sanchez San Blas DNI 70901148Z
-*/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -734,7 +727,7 @@ void logError(char * hostName, int port, char * fileName, char * protocol, int e
 	}
 
 	sprintf(toLog,"\n[%s][HOST: %s][PROTOCOL: %s][PORT: %d][FILE: %s][ERROR: %s][MSG: %s]",getDateAndTime(), hostName, protocol, port, fileName, error, errormsg);
-	fprintf(stderr,"%s",toLog);
+	//fprintf(stderr,"%s",toLog);
 	fprintf(logFile, "%s",toLog);
 
 	fclose(logFile);

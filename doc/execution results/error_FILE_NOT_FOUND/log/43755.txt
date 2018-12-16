@@ -1,3 +1,0 @@
-
-[2018-12-11 13:1:6][HOST: olivo.fis.usal.es][PROTOCOL: TCP][FILE: test5.gif][STARTED READ]
-[2018-12-11 13:1:6][HOST: olivo.fis.usal.es][PROTOCOL: TCP][PORT: 43755][FILE: test5.gif][ERROR: FILE_NOT_FOUND][MSG: server coundn't found the requested file]
