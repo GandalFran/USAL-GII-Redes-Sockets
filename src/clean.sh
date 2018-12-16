@@ -24,8 +24,8 @@ if [ -f $SERVER_EXE ]; then
 	rm $SERVER_EXE
 fi
 #remove last execution results
-if [ -f [0-9]*.txt ]; then
-	rm [0-9]*.txt
+if [ -f *.txt ]; then
+	rm *.txt
 fi
 if [ -f peticiones.log ]; then
 	rm peticiones.log

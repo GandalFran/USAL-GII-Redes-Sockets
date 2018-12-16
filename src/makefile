@@ -2,7 +2,8 @@ CC=gcc
 CFLAGS=-g
 COFLAGS=-g -c
 OBJ= msgUtils.o
-LIBS=-lsocket -lnsl
+#quit the # only if you are in a solaris enviroment
+#LIBS=-lsocket -lnsl
 
 all: servidor cliente removeCompilationWaste
 	
